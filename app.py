@@ -1,6 +1,9 @@
+import hmac
+import hashlib
+import subprocess
 import os
 import json
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, abort
 
 app = Flask(__name__)
 DATA_FILE = 'data.json'
@@ -41,9 +44,38 @@ def handle_data():
         with open(DATA_FILE, 'w') as f:
             json.dump(new_data, f)
         return jsonify({"status": "success"})
-    
+
     # Otherwise, it's a GET request, so send the current data
     return jsonify(load_data())
+
+# Webhook stuff
+GITHUB_SECRET = 'Starwars4isthebestone!'
+@app.route('/github_webhook', methods=['POST'])
+def webhook():
+    # 1. Grab the security signature from GitHub's incoming request
+    signature_header = request.headers.get('X-Hub-Signature-256')
+    if not signature_header:
+        abort(403)
+
+    # 2. Calculate what the signature *should* be using your secret
+    payload_body = request.get_data()
+    hash_object = hmac.new(GITHUB_SECRET.encode('utf-8'), msg=payload_body, digestmod=hashlib.sha256)
+    expected_signature = "sha256=" + hash_object.hexdigest()
+
+    # 3. Compare the signatures. If they don't match, reject the request.
+    if not hmac.compare_digest(expected_signature, signature_header):
+        abort(403)
+
+    # 4. If the signature is valid, pull the new code from GitHub!
+    repo_dir = '/home/francelyonmission/boussole-hebdo'
+    subprocess.run(['git', 'pull'], cwd=repo_dir)
+
+    # 5. Touch the WSGI file to tell PythonAnywhere to restart the server
+    wsgi_file = '/var/www/francelyonmission_pythonanywhere_com_wsgi.py'
+    if os.path.exists(wsgi_file):
+        os.utime(wsgi_file, None)
+
+    return 'Updated PythonAnywhere successfully', 200
 
 if __name__ == '__main__':
     # Start the Flask server
