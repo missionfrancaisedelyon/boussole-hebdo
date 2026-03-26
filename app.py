@@ -66,9 +66,13 @@ def webhook():
     if not hmac.compare_digest(expected_signature, signature_header):
         abort(403)
 
-    # 4. If the signature is valid, pull the new code from GitHub!
+    # 4. Pull the new code and capture the output
     repo_dir = '/home/francelyonmission/boussole-hebdo'
-    subprocess.run(['git', 'pull'], cwd=repo_dir)
+    git_process = subprocess.run(['git', 'pull'], cwd=repo_dir, capture_output=True, text=True)
+
+    # Print the output to your PythonAnywhere Server Log
+    print("GIT STDOUT:", git_process.stdout)
+    print("GIT STDERR:", git_process.stderr)
 
     # 5. Touch the WSGI file to tell PythonAnywhere to restart the server
     wsgi_file = '/var/www/francelyonmission_pythonanywhere_com_wsgi.py'
