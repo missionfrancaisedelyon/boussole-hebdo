@@ -35,17 +35,14 @@ def load_data():
 def home():
     return render_template('index.html')
 
-# Route 2: Handle the API data (GET for fetching, POST for saving)
 @app.route('/api/data', methods=['GET', 'POST'])
 def handle_data():
     if request.method == 'POST':
-        # Someone clicked "Appliquer", save the new data
         new_data = request.json
         with open(DATA_FILE, 'w') as f:
             json.dump(new_data, f)
         return jsonify({"status": "success"})
 
-    # Otherwise, it's a GET request, so send the current data
     return jsonify(load_data())
 
 # Webhook stuff
