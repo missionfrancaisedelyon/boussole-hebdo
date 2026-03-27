@@ -520,6 +520,22 @@
       gap: 18px;
     }
 
+    .btn-download {
+      background: #5a6268;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 15px;
+      font-size: 13px;
+      font-family: sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-download:hover {
+      background: #495057;
+    }
+
     /* ── TOP NAVIGATION ── */
     .top-nav {
       position: fixed;
@@ -618,8 +634,12 @@
             min="0"></div>
       </div>
       <div class="edit-actions">
-        <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
-        <button class="btn-apply" onclick="applyEdit()">Appliquer</button>
+        <div class="edit-actions">
+          <button type="button" class="btn-download" onclick="downloadJSON()" style="margin-right: auto;">📥 Télécharger les données</button>
+
+          <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
+          <button class="btn-apply" onclick="applyEdit()">Appliquer</button>
+        </div>
       </div>
     </div>
   </div>
@@ -860,6 +880,22 @@
         toggleBtn.innerHTML = '📊 RCM Stats';
         editBtn.style.display = 'block'; // Show edit button again
       }
+    }
+
+    function downloadJSON() {
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+  
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "data_backup.json"; // Name of the downloaded file
+  
+      document.body.appendChild(link);
+      link.click();
+  
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }
 
     // Start the process when the page loads
