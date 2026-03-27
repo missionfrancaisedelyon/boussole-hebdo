@@ -634,12 +634,9 @@
             min="0"></div>
       </div>
       <div class="edit-actions">
-        <div class="edit-actions">
-          <button type="button" class="btn-download" onclick="downloadJSON()" style="margin-right: auto;">📥 Télécharger les données</button>
-
-          <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
-          <button class="btn-apply" onclick="applyEdit()">Appliquer</button>
-        </div>
+        <button type="button" class="btn-download" onclick="downloadJSON()" style="margin-right: auto;">📥 Télécharger les données</button>
+        <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
+        <button class="btn-apply" onclick="applyEdit()">Appliquer</button>
       </div>
     </div>
   </div>
@@ -889,7 +886,7 @@
   
       const link = document.createElement("a");
       link.href = url;
-      link.download = "data_backup.json"; // Name of the downloaded file
+      link.download = "data.json"; // Name of the downloaded file
   
       document.body.appendChild(link);
       link.click();
