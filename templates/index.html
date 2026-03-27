@@ -634,7 +634,10 @@
             min="0"></div>
       </div>
       <div class="edit-actions">
-        <button type="button" class="btn-download" onclick="downloadJSON()" style="margin-right: auto;">📥 Télécharger les données</button>
+        <button type="button" class="btn-download" onclick="downloadJSON()">📥 Télécharger les données</button>
+        <button type="button" class="btn-download" onclick="document.getElementById('file-upload').click()">📤 Importer les données</button>
+        <input type="file" id="file-upload" accept=".json" style="display: none;" onchange="uploadJSON(event)">
+        <div style="flex: 1;"></div>
         <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
         <button class="btn-apply" onclick="applyEdit()">Appliquer</button>
       </div>
@@ -893,6 +896,37 @@
   
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    }
+
+    async function uploadJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const fileContent = await file.text();
+        const uploadedData = JSON.parse(fileContent);
+
+        // Send the uploaded data to the server
+        const response = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(uploadedData)
+        });
+
+        if (response.ok) {
+          // Reload the data and refresh the display
+          await loadData();
+          alert('Data successfully imported from ' + file.name);
+          // Reset the file input so the same file can be uploaded again if needed
+          document.getElementById('file-upload').value = '';
+        } else {
+          alert('Error uploading data: ' + response.statusText);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Error: The file must be a valid JSON file.');
+        document.getElementById('file-upload').value = '';
+      }
     }
 
     // Start the process when the page loads
