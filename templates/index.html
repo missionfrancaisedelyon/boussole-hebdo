@@ -890,7 +890,7 @@
       const link = document.createElement("a");
       link.href = url;
       const today = new Date().toISOString().split('T')[0];
-      link.download = "data.json-" + today; // Name of the downloaded file with date
+      link.download = "data-" + today + ".json"; // Name of the downloaded file with date
   
       document.body.appendChild(link);
       link.click();
