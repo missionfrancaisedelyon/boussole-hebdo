@@ -3,6 +3,7 @@ import hashlib
 import subprocess
 import os
 import json
+import urllib.request
 from flask import Flask, render_template, request, jsonify, abort
 
 app = Flask(__name__)
@@ -41,8 +42,15 @@ def handle_data():
         new_data = request.json
         with open(DATA_FILE, 'w') as f:
             json.dump(new_data, f)
-        return jsonify({"status": "success"})
 
+        google_webhook_url = 'https://script.google.com/macros/s/AKfycbx9n8mXo2s1l3a7Zt5e9v6Xj8k9w0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8/exec'
+        try:
+            req = urllib.request.Request(google_webhook_url, method='POST')
+            urllib.request.urlopen(req)
+        except Exception as e:
+            print(f"Failed to trigger Google Sheets update: {e}")
+
+        return jsonify({"status": "success"})
     return jsonify(load_data())
 
 # Webhook stuff
