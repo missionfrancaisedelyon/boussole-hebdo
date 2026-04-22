@@ -43,7 +43,7 @@ def handle_data():
         with open(DATA_FILE, 'w') as f:
             json.dump(new_data, f)
 
-        google_webhook_url = 'https://script.google.com/macros/s/AKfycbx9n8mXo2s1l3a7Zt5e9v6Xj8k9w0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8/exec'
+        google_webhook_url = 'https://script.google.com/macros/s/AKfycbwnZLmRz4Ojn5ZTlENJD1JjxL-y46B9di56kY4m9lUM5hoRoxxMOXWAk9hfQKTemUHS0A/exec'
         try:
             req = urllib.request.Request(google_webhook_url, method='POST')
             urllib.request.urlopen(req)
