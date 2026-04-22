@@ -45,8 +45,14 @@ def handle_data():
 
         google_webhook_url = 'https://script.google.com/macros/s/AKfycbwnZLmRz4Ojn5ZTlENJD1JjxL-y46B9di56kY4m9lUM5hoRoxxMOXWAk9hfQKTemUHS0A/exec'
         try:
-            req = urllib.request.Request(google_webhook_url, method='POST')
-            urllib.request.urlopen(req)
+            payload = json.dumps(new_data).encode('utf-8')
+            req = urllib.request.Request(
+                google_webhook_url,
+                data=payload,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            urllib.request.urlopen(req, timeout=5)
         except Exception as e:
             print(f"Failed to trigger Google Sheets update: {e}")
 
