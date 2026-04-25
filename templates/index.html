@@ -900,24 +900,30 @@
       const globalMax = Math.max(...allVals);
 
       function barHTML(cls, w, color, opacity, labelTxt, val, numCls, nestedFriendsCount = 0) {
-        const barStyle = `width:${Math.max(w, 4)}px;background:${color};${opacity ? 'opacity:' + opacity : ''};position:relative;overflow:hidden;`;
+        // Base style for the pill container, flexbox added to fix text spacing
+        const barStyle = `width:${Math.max(w, 4)}px;background:${color};${opacity ? 'opacity:' + opacity : ''};position:relative;overflow:hidden;display:flex;align-items:center;`;
         
         let nestedHtml = '';
         if (nestedFriendsCount > 0) {
           const parentVal = parseInt(val.toString().replace(/,/g, '')) || 1;
           const percent = Math.min((nestedFriendsCount / parentVal) * 100, 100);
-          // The inner nested bar (Dark Blue, sits under the text)
-          nestedHtml = `<div style="position:absolute; height:100%; width:${percent}%; background:#3A7FCC; top:0; left:0; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; box-sizing:border-box; z-index:2; border-radius:inherit;">
+          
+          // The inner nested bar (Dark Blue). Added 'title' for hover tooltip!
+          nestedHtml = `<div title="Amis venus pour la première fois" style="position:absolute; height:100%; width:${percent}%; background:#3A7FCC; top:0; left:0; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; box-sizing:border-box; z-index:2; border-radius:inherit;">
             <span style="color:white; font-size:12px; font-weight:bold; font-family:sans-serif;">${nestedFriendsCount}</span>
           </div>`;
         }
 
-        // Wrap labels and numbers with z-index: 3 so they appear OVER the nested bar
-        const labelHtml = `<span class="bar-label" style="position:relative;z-index:3;">${labelTxt}</span>`;
-        const numHtml = `<span class="bar-num ${numCls}" style="position:relative;z-index:3;">${val}</span>`;
-
         if (w >= 105) {
-          return `<div class="bar-row"><div class="bar-pill ${cls}" style="${barStyle}">${nestedHtml}${labelHtml}${numHtml}</div></div>`;
+          return `<div class="bar-row">
+            <div class="bar-pill ${cls}" style="${barStyle}">
+              ${nestedHtml}
+              <div style="position:relative; z-index:3; display:flex; justify-content:space-between; width:100%; pointer-events:none; padding:0 4px;">
+                <span class="bar-label" style="position:relative;">${labelTxt}</span>
+                <span class="bar-num ${numCls}" style="position:relative;">${val}</span>
+              </div>
+            </div>
+          </div>`;
         } else {
           return `<div class="bar-row" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;">
             <span class="outside-label" style="text-align:right;">${labelTxt}</span>
@@ -931,12 +937,16 @@
       data.stages.forEach((s, i) => {
         let nestedTw = 0;
         let nestedLw = 0;
+        let legendHtml = '';
         
-        // Check if the current stage is "Amis à l'église" (ignoring case and accents)
+        // Check if the current stage is "Amis à l'église"
         const stageName = s.label.toLowerCase();
         if (stageName.includes("église") || stageName.includes("eglise")) {
           nestedTw = friendsAttendanceData.current || 0;
           nestedLw = friendsAttendanceData.lastWeek || 0;
+          
+          // Create the small legend text under the bars for this specific stage
+          legendHtml = `<div style="text-align: right; font-size: 11px; color: #3A7FCC; font-style: italic; margin-top: 6px; padding-right: 5px;">* La barre bleue indique l'assistance à la 1ère semaine</div>`;
         }
 
         funnel.innerHTML += `${i > 0 ? '<div class="stage-sep"><div class="sep-line"></div></div>' : ''}
@@ -945,6 +955,7 @@
           ${barHTML('tw', (s.tw / globalMax) * availW, s.color, null, 'Cette semaine', s.tw.toLocaleString(), 'tw', nestedTw)}
           ${barHTML('lw', (s.lw / globalMax) * availW, s.color, '0.6', 'Sem. dernière', s.lw.toLocaleString(), 'lw', nestedLw)}
           ${barHTML('avg', (s.avg / globalMax) * availW, s.color, '0.35', 'Moyenne', s.avg.toLocaleString(), 'avg', 0)}
+          ${legendHtml}
         </div>`;
       });
     }
