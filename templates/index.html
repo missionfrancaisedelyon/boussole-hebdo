@@ -1552,6 +1552,31 @@
       chart.draw(chartData, options);
     }
 
+    function toggleAnalysisMode() {
+      const isAnalysisMode = document.getElementById('analyze-toggle').checked;
+      const layoutElement = document.querySelector('.rcm-layout');
+      
+      if (isAnalysisMode) {
+        // Switch is ON: Reveal the 3-column analysis layout
+        layoutElement.classList.remove('basic-mode');
+      } else {
+        // Switch is OFF: Hide side panels and go back to full-width
+        layoutElement.classList.add('basic-mode');
+        
+        // Reset to Mission view if they close the panel while looking at a specific zone
+        if (selectedRCMZone !== 'Mission') {
+           selectedRCMZone = 'Mission';
+           const missionRadio = document.querySelector('input[name="zone-filter"][value="Mission"]');
+           if (missionRadio) missionRadio.checked = true;
+        }
+      }
+      
+      // Wait 50ms for CSS to resize, then perfectly redraw the charts to fit the space
+      setTimeout(() => {
+         if (typeof updateRCMView === 'function') updateRCMView();
+      }, 50);
+    }
+
     // Start the process when the page loads
     window.addEventListener('load', loadData);
     window.addEventListener('resize', buildFunnel);
