@@ -926,7 +926,7 @@
     let rcmZonesList = [];       // Stores the unique zone names
     let selectedRCMZone = 'Mission'; // Keeps track of the currently selected radio button
     let data = {}; // We start empty, the server will fill this!
-    let friendsAttendanceData = { current: 0, lastWeek: 0 }; // Friends attendance from Google Sheet
+    let friendsAttendanceData = { current: 0, lastWeek: 0, average: 0 }; // Friends attendance from Google Sheet
     
     // Google Sheets configuration (used for RCM data and friends attendance)
     const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
@@ -938,7 +938,6 @@
       renderAll();
     }
 
-    // Fetch friends attendance from Google Sheet for current and last week
     // Fetch friends attendance from Google Sheet for current and last week
     function fetchFriendsAttendanceData() {
       const today = new Date();
@@ -960,9 +959,40 @@
       const lastWeekStart = lastWeekMonday.toISOString().split('T')[0];
       const lastWeekEnd = lastWeekSunday.toISOString().split('T')[0];
 
-      // We only need 3 arguments now: Start, End, and the Key to store it under
       fetchFriendsForWeek(startDate, endDate, 'current');
       fetchFriendsForWeek(lastWeekStart, lastWeekEnd, 'lastWeek');
+      
+      // NEW: Fetch the manual average number from cell H1
+      fetchFriendsAverage();
+    }
+
+    function fetchFriendsAverage() {
+      // Query just Column H, and limit to 1 row (Row 1)
+      const queryString = `SELECT H LIMIT 1`;
+      const encodedQuery = encodeURIComponent(queryString);
+      
+      // We append &headers=0 so Google doesn't accidentally treat H1 as a text header
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}&headers=0`;
+      
+      const query = new google.visualization.Query(url);
+      query.send((response) => {
+        if (!response.isError()) {
+          const tableData = response.getDataTable();
+          if (tableData.getNumberOfRows() > 0) {
+            // Because headers=0, Row 1 is at index 0
+            const avgVal = parseInt(tableData.getValue(0, 0));
+            if (!isNaN(avgVal) && avgVal > 0) {
+              friendsAttendanceData['average'] = avgVal;
+            } else {
+              friendsAttendanceData['average'] = 0;
+            }
+          }
+          // Redraw the funnel with the new average
+          if (data && data.stages) {
+            buildFunnel();
+          }
+        }
+      });
     }
 
     function fetchFriendsForWeek(startDate, endDate, weekKey) {
@@ -1074,8 +1104,9 @@
       data.stages.forEach((s, i) => {
         let nestedTw = 0;
         let nestedLw = 0;
+        let nestedAvg = 0; // <-- Added this variable
         let legendHtml = '';
-        let isAmisEglise = false; // Flag to tell barHTML to push text outside
+        let isAmisEglise = false;
         
         // Check if the current stage is "Amis à l'église"
         const stageName = s.label.toLowerCase();
@@ -1083,8 +1114,8 @@
           isAmisEglise = true;
           nestedTw = friendsAttendanceData.current || 0;
           nestedLw = friendsAttendanceData.lastWeek || 0;
+          nestedAvg = friendsAttendanceData.average || 0; // <-- Assign the new average!
           
-          // Replaced the tiny italic text with a large, readable label centered under the bars
           legendHtml = `<div style="text-align: center; font-size: 14px; font-weight: bold; color: #3A7FCC; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <div style="width: 12px; height: 12px; background: #3A7FCC; border-radius: 2px;"></div>
             Nouveaux Amis à l'Eglise
@@ -1096,7 +1127,8 @@
           <div class="stage-label-txt">${s.label}</div>
           ${barHTML('tw', (s.tw / globalMax) * availW, s.color, null, 'Cette semaine', s.tw.toLocaleString(), 'tw', nestedTw, isAmisEglise)}
           ${barHTML('lw', (s.lw / globalMax) * availW, s.color, '0.6', 'Sem. dernière', s.lw.toLocaleString(), 'lw', nestedLw, isAmisEglise)}
-          ${barHTML('avg', (s.avg / globalMax) * availW, s.color, '0.35', 'Moyenne', s.avg.toLocaleString(), 'avg', 0, isAmisEglise)}
+          
+          ${barHTML('avg', (s.avg / globalMax) * availW, s.color, '0.35', 'Moyenne', s.avg.toLocaleString(), 'avg', nestedAvg, isAmisEglise)}
           ${legendHtml}
         </div>`;
       });
