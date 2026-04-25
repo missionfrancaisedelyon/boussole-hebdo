@@ -1363,35 +1363,35 @@
       const statusCounts = { 'Oui': 0, 'Non': 0 };
       const attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
       const zoneMetrics = {}; 
+      const activeWeeks = new Set(); // Tracks how many weeks we are looking at
 
       // 1. FILTER AND DEDUPLICATE
       rawRCMDataList.forEach(entry => {
-        // Apply the active filter
         if (selectedRCMZone !== 'Mission' && entry.zone !== selectedRCMZone) return;
-
-        // Deduplicate: Keep only the latest report per sector, per week
         const uniqueKey = `${entry.weekStr}_${entry.sector}`;
         deduplicatedResponses[uniqueKey] = entry;
       });
 
       // 2. AGGREGATE FOR CHARTS
       Object.values(deduplicatedResponses).forEach(entry => {
+        activeWeeks.add(entry.weekStr); // Record the active week
+        
         const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
         
-        // Status Pie
+        // Status Pie (Keeps total aggregate)
         if (isYes) statusCounts['Oui']++;
         else statusCounts['Non']++;
 
-        // Zone Bar Chart
+        // Zone Bar Chart (Now counting TOTAL reports, not unique names)
         if (entry.zone) {
           if (!zoneMetrics[entry.zone]) {
-            zoneMetrics[entry.zone] = { rcmCount: 0, sectors: new Set() };
+            zoneMetrics[entry.zone] = { rcmCount: 0, reportCount: 0 };
           }
-          zoneMetrics[entry.zone].sectors.add(entry.sector);
+          zoneMetrics[entry.zone].reportCount++; // Every deduplicated report adds 1
           if (isYes) zoneMetrics[entry.zone].rcmCount++;
         }
 
-        // Attendance Pie
+        // Attendance Pie (Keeps total aggregate)
         if (isYes && entry.attendance) {
           const attStr = entry.attendance.toString();
           if (attStr.includes('1')) attendanceCounts['1 membre']++;
@@ -1400,10 +1400,22 @@
         }
       });
 
+      // 3. CALCULATE AVERAGES FOR MULTI-WEEK VIEWS
+      const numWeeks = activeWeeks.size || 1; // Prevent division by zero
+      const averagedZoneMetrics = {};
+      
+      Object.keys(zoneMetrics).forEach(zone => {
+         averagedZoneMetrics[zone] = {
+            // Divide total by weeks to get the average (e.g. 2.5 RCMs per week)
+            avgRcm: zoneMetrics[zone].rcmCount / numWeeks,
+            avgReports: zoneMetrics[zone].reportCount / numWeeks
+         };
+      });
+
       // Update Charts
       drawRCMStatusPie(statusCounts);
       drawAttendancePie(attendanceCounts);
-      drawZoneBarChart(zoneMetrics);
+      drawZoneBarChart(averagedZoneMetrics, numWeeks); // Passing the new data and week count!
 
       // Update Right Panel Details
       buildRightPanelDetails(deduplicatedResponses);
@@ -1527,18 +1539,27 @@
       chart.draw(chartData, options);
     }
 
-    function drawZoneBarChart(zoneMetrics) {
-      // Convert to array and sort by stake name
+    // Added numWeeks as a parameter with a default of 1
+    function drawZoneBarChart(zoneMetrics, numWeeks = 1) {
       const zoneArray = Object.keys(zoneMetrics)
         .sort()
         .map(zone => [
           zone,
-          zoneMetrics[zone].rcmCount,
-          zoneMetrics[zone].sectors.size
+          zoneMetrics[zone].avgRcm,
+          zoneMetrics[zone].avgReports
         ]);
 
+      // Safety check for empty data
+      if (zoneArray.length === 0) {
+        zoneArray.push(['Aucune donnée', 0, 0]);
+      }
+
+      // Smart Labels: Change text if looking at multiple weeks!
+      const labelRCM = numWeeks > 1 ? 'RCM (Moy. /sem)' : 'Réunions RCM';
+      const labelReports = numWeeks > 1 ? 'Rapports (Moy. /sem)' : 'Secteurs Rapportants';
+
       const chartData = google.visualization.arrayToDataTable([
-        ['Zone', 'Réunions RCM', 'Secteurs Rapportants'],
+        ['Zone', labelRCM, labelReports],
         ...zoneArray
       ]);
 
@@ -1548,12 +1569,8 @@
         bar: { groupWidth: '75%' },
         colors: ['#2a6b4a', '#D4943A'],
         chartArea: { width: '85%', height: '80%' },
-        hAxis: {
-          title: 'Zone'
-        },
-        vAxis: {
-          title: 'Nombre'
-        }
+        hAxis: { title: 'Zone' },
+        vAxis: { title: 'Nombre', minValue: 0 } 
       };
 
       const chart = new google.visualization.ColumnChart(document.getElementById('rcm_zone_bar'));
