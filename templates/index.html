@@ -791,12 +791,65 @@
 
   <script>
     let data = {}; // We start empty, the server will fill this!
-
-    // 1. Fetch the data from the Python server when the page loads
+    let friendsAttendanceData = { current: 0, lastWeek: 0 }; // Friends attendance from Google Sheet
+    
+    // Google Sheets configuration (used for RCM data and friends attendance)
+    const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
+    const SHEET_NAME = 'Form Responses'; // Verify your tab name
     async function loadData() {
       const response = await fetch('/api/data');
       data = await response.json();
+      fetchFriendsAttendanceData(); // Fetch Google Sheet friends attendance
       renderAll();
+    }
+
+    // Fetch friends attendance from Google Sheet for current and last week
+    function fetchFriendsAttendanceData() {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysSinceSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
+      const mostRecentSunday = new Date(today);
+      mostRecentSunday.setDate(today.getDate() - daysSinceSunday);
+      
+      const lastMonday = new Date(mostRecentSunday);
+      lastMonday.setDate(mostRecentSunday.getDate() - 6);
+      
+      const lastWeekSunday = new Date(lastMonday);
+      lastWeekSunday.setDate(lastMonday.getDate() - 1);
+      const lastWeekMonday = new Date(lastWeekSunday);
+      lastWeekMonday.setDate(lastWeekSunday.getDate() - 6);
+
+      // Format dates
+      const startDate = lastMonday.toISOString().split('T')[0];
+      const endDate = mostRecentSunday.toISOString().split('T')[0];
+      const lastWeekStart = lastWeekMonday.toISOString().split('T')[0];
+      const lastWeekEnd = lastWeekSunday.toISOString().split('T')[0];
+
+      // Fetch current week friends attendance
+      fetchFriendsForWeek(startDate, endDate, 'current');
+      // Fetch last week friends attendance  
+      fetchFriendsForWeek(lastWeekStart, lastWeekEnd, 'lastWeek');
+    }
+
+    function fetchFriendsForWeek(startDate, endDate, weekKey) {
+      const queryString = `SELECT F WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
+      const encodedQuery = encodeURIComponent(queryString);
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
+      
+      const query = new google.visualization.Query(url);
+      query.send((response) => {
+        if (!response.isError()) {
+          let total = 0;
+          const data = response.getDataTable();
+          for (let i = 0; i < data.getNumberOfRows(); i++) {
+            const friends = parseInt(data.getValue(i, 0));
+            if (!isNaN(friends) && friends > 0) {
+              total += friends;
+            }
+          }
+          friendsAttendanceData[weekKey] = total;
+        }
+      });
     }
 
     function renderAll() {
@@ -805,7 +858,7 @@
       namesEl.innerHTML = '';
       data.names.forEach(n => namesEl.innerHTML += `<div class="ni">${n}</div>`);
 
-      function renderMetric(prefix, obj) {
+      function renderMetric(prefix, obj, friendsData = null) {
         const max = Math.max(obj.tw, obj.lw, obj.avg) || 1;
         document.getElementById(`disp-${prefix}-tw`).textContent = obj.tw.toLocaleString();
         document.getElementById(`disp-${prefix}-lw`).textContent = obj.lw.toLocaleString();
@@ -813,9 +866,36 @@
         document.getElementById(`bar-${prefix}-tw`).style.width = (obj.tw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-lw`).style.width = (obj.lw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-avg`).style.width = (obj.avg / max * 100) + '%';
+        
+        // Add nested bar for friends attendance (only for members metric)
+        if (prefix === 'members' && friendsData) {
+          const friendsTwPercent = friendsData.current > 0 ? (friendsData.current / obj.tw * 100) : 0;
+          const friendsLwPercent = friendsData.lastWeek > 0 ? (friendsData.lastWeek / obj.lw * 100) : 0;
+          
+          // Create nested bar elements if they don't exist
+          let nestedBarTw = document.getElementById(`bar-${prefix}-tw-friends`);
+          if (!nestedBarTw) {
+            nestedBarTw = document.createElement('div');
+            nestedBarTw.id = `bar-${prefix}-tw-friends`;
+            nestedBarTw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
+            document.getElementById(`bar-${prefix}-tw`).parentElement.style.position = 'relative';
+            document.getElementById(`bar-${prefix}-tw`).parentElement.appendChild(nestedBarTw);
+          }
+          nestedBarTw.style.width = Math.min(friendsTwPercent, 100) + '%';
+          
+          let nestedBarLw = document.getElementById(`bar-${prefix}-lw-friends`);
+          if (!nestedBarLw) {
+            nestedBarLw = document.createElement('div');
+            nestedBarLw.id = `bar-${prefix}-lw-friends`;
+            nestedBarLw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
+            document.getElementById(`bar-${prefix}-lw`).parentElement.style.position = 'relative';
+            document.getElementById(`bar-${prefix}-lw`).parentElement.appendChild(nestedBarLw);
+          }
+          nestedBarLw.style.width = Math.min(friendsLwPercent, 100) + '%';
+        }
       }
       renderMetric('lessons', data.lessons);
-      renderMetric('members', data.members);
+      renderMetric('members', data.members, friendsAttendanceData);
       buildFunnel();
     }
 
@@ -971,9 +1051,6 @@
     // We wait for Google Charts to load, then initialize defaults and draw.
     google.charts.setOnLoadCallback(initializeRCMDashboard);
 
-    const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
-    const SHEET_NAME = 'Form Responses'; // Verify your tab name
-
     function initializeRCMDashboard() {
       setDefaultDates();
       fetchAndDrawCharts();
@@ -1003,7 +1080,8 @@
       const endDate = document.getElementById('end-date').value;
 
       // We use toDate(A) to safely convert Timestamps into pure dates for filtering
-      let queryString = `SELECT A, B, C, D, E WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
+      // Include column F for friends attendance data
+      let queryString = `SELECT A, B, C, D, E, F WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
 
       const encodedQuery = encodeURIComponent(queryString);
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
@@ -1020,13 +1098,33 @@
 
       const rawData = response.getDataTable();
       
-      // --- DATA AGGREGATION ---
+      // --- DEDUPLICATION: One response per sector per week for RCM charts ---
+      const seenSectorWeeks = {}; // { weekKey + sectorKey: true }
+      const deduplicatedIndices = [];
+      
+      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+        const timestamp = rawData.getValue(i, 0);
+        const sector = rawData.getValue(i, 2);
+        
+        // Extract week from timestamp (ISO week string)
+        const date = new Date(timestamp);
+        const weekKey = getISOWeek(date);
+        const sectorWeekKey = weekKey + "|" + sector;
+        
+        // Keep only the first response for each sector+week combo
+        if (!seenSectorWeeks[sectorWeekKey]) {
+          seenSectorWeeks[sectorWeekKey] = true;
+          deduplicatedIndices.push(i);
+        }
+      }
+      
+      // --- DATA AGGREGATION (using deduplicated data for RCM charts) ---
       let rcmStatusCounts = { 'Oui': 0, 'Non': 0 };
       let attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
       let zoneMetrics = {}; // { zoneName: { rcmCount: 0, sectorsReporting: new Set() } }
 
-      // Loop through all rows
-      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+      // Loop through deduplicated indices for RCM charts
+      deduplicatedIndices.forEach(i => {
         const stake = rawData.getValue(i, 1); // Column B: Stake
         const unity = rawData.getValue(i, 2); // Column C: Unity (sector)
         const hadRcm = rawData.getValue(i, 3); // Column D: Did you have an RCM?
@@ -1049,6 +1147,17 @@
         }
         if (hadRcm === 'Yes') zoneMetrics[stake].rcmCount++;
         zoneMetrics[stake].sectors.add(unity);
+      });
+
+      // --- FRIENDS ATTENDANCE DATA (all reports, no deduplication) ---
+      let friendsAttendanceTotal = 0;
+      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+        const friendsAttendance = rawData.getValue(i, 5); // Column F: Friends attendance
+        // Count numeric values only
+        const count = parseInt(friendsAttendance);
+        if (!isNaN(count) && count > 0) {
+          friendsAttendanceTotal += count;
+        }
       }
 
       // Draw Chart 1: RCM Status Pie Chart
@@ -1059,6 +1168,41 @@
 
       // Draw Chart 3: Zone Bar Chart
       drawZoneBarChart(zoneMetrics);
+      
+      // Update dashboard with friends attendance data
+      updateFriendsAttendance(friendsAttendanceTotal);
+    }
+
+    // Update the main dashboard with friends attendance data
+    function updateFriendsAttendance(friendsTotal) {
+      friendsAttendanceData.current = friendsTotal;
+      // Re-render the members metric with updated friends data
+      if (data.members) {
+        const membersEl = document.getElementById('disp-members-tw');
+        if (membersEl) {
+          const max = Math.max(data.members.tw, data.members.lw, data.members.avg) || 1;
+          const friendsTwPercent = friendsTotal > 0 ? (friendsTotal / data.members.tw * 100) : 0;
+          
+          let nestedBarTw = document.getElementById('bar-members-tw-friends');
+          if (!nestedBarTw) {
+            nestedBarTw = document.createElement('div');
+            nestedBarTw.id = 'bar-members-tw-friends';
+            nestedBarTw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
+            document.getElementById('bar-members-tw').parentElement.style.position = 'relative';
+            document.getElementById('bar-members-tw').parentElement.appendChild(nestedBarTw);
+          }
+          nestedBarTw.style.width = Math.min(friendsTwPercent, 100) + '%';
+        }
+      }
+    }
+
+    // Helper function to get ISO week string from date
+    function getISOWeek(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return d.getUTCFullYear() + '-W' + String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7)).padStart(2, '0');
     }
 
     function drawRCMStatusPie(counts) {
