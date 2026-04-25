@@ -9,6 +9,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -21,6 +22,21 @@
       background: #fdf8f0;
       color: #1a1a1a;
       overflow-x: hidden;
+    }
+
+    .date-filter {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 400px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
 
     /* ── EDIT PANEL ── */
@@ -745,11 +761,19 @@
     <div class="top-title">Rapport RCM</div>
     <div class="top-sub">Statistiques hebdomadaires et tendances</div>
     
+    <div class="date-filter">
+      <label for="start-date">Du:</label>
+      <input type="date" id="start-date">
+      <label for="end-date">Au:</label>
+      <input type="date" id="end-date">
+      <button onclick="drawDynamicCharts()">Mettre à jour</button>
+    </div>
+    
     <div class="rcm-charts">
-      <iframe scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vSub3qbMSqQhzMCa3SwmlRHYUjx8A-kTmBzgKvoanarP6TQ69Kn3-tNBRl2UoidtgUD8H42IbrzG5AH/pubchart?oid=1610428684&format=interactive"></iframe>
-      <iframe scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vSub3qbMSqQhzMCa3SwmlRHYUjx8A-kTmBzgKvoanarP6TQ69Kn3-tNBRl2UoidtgUD8H42IbrzG5AH/pubchart?oid=1775567694&format=interactive"></iframe>
-      <iframe scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vSub3qbMSqQhzMCa3SwmlRHYUjx8A-kTmBzgKvoanarP6TQ69Kn3-tNBRl2UoidtgUD8H42IbrzG5AH/pubchart?oid=320079855&format=interactive"></iframe>
-      <iframe scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vSub3qbMSqQhzMCa3SwmlRHYUjx8A-kTmBzgKvoanarP6TQ69Kn3-tNBRl2UoidtgUD8H42IbrzG5AH/pubchart?oid=670391289&format=interactive"></iframe>
+      <div class="chart-container" id="chart_div_1"></div>
+      <div class="chart-container" id="chart_div_2"></div>
+      <div class="chart-container" id="chart_div_3"></div>
+      <div class="chart-container" id="chart_div_4"></div>
     </div>
   </div>
 
@@ -928,6 +952,57 @@
         alert('Error: The file must be a valid JSON file.');
         document.getElementById('file-upload').value = '';
       }
+    }
+
+    // Google Charts for RCM Dashboard
+    const SPREADSHEET_ID = '2PACX-1vSub3qbMSqQhzMCa3SwmlRHYUjx8A-kTmBzgKvoanarP6TQ69Kn3-tNBRl2UoidtgUD8H42IbrzG5AH';
+    const SHEET_NAME = 'Dashboard'; // Assuming the sheet name; adjust if necessary
+
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(drawDynamicCharts);
+
+    function drawDynamicCharts() {
+      let query = 'SELECT A, B, C, D, E';
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+      if (startDate || endDate) {
+        query += ' WHERE';
+        if (startDate) query += ` A >= date '${startDate}'`;
+        if (startDate && endDate) query += ' AND';
+        if (endDate) query += ` A <= date '${endDate}'`;
+      }
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
+      const queryObj = new google.visualization.Query(url);
+      queryObj.send(handleQueryResponse);
+    }
+
+    function handleQueryResponse(response) {
+      if (response.isError()) {
+        console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        return;
+      }
+      const data = response.getDataTable();
+      // Chart 1: Timestamp (A) and B
+      const view1 = new google.visualization.DataView(data);
+      view1.setColumns([0, 1]);
+      const chart1 = new google.visualization.LineChart(document.getElementById('chart_div_1'));
+      chart1.draw(view1, {title: 'Chart 1'});
+      // Chart 2: Timestamp (A) and C
+      const view2 = new google.visualization.DataView(data);
+      view2.setColumns([0, 2]);
+      const chart2 = new google.visualization.LineChart(document.getElementById('chart_div_2'));
+      chart2.draw(view2, {title: 'Chart 2'});
+      // Chart 3: Timestamp (A) and D
+      const view3 = new google.visualization.DataView(data);
+      view3.setColumns([0, 3]);
+      const chart3 = new google.visualization.LineChart(document.getElementById('chart_div_3'));
+      chart3.draw(view3, {title: 'Chart 3'});
+      // Chart 4: Timestamp (A) and E
+      const view4 = new google.visualization.DataView(data);
+      view4.setColumns([0, 4]);
+      const chart4 = new google.visualization.LineChart(document.getElementById('chart_div_4'));
+      chart4.draw(view4, {title: 'Chart 4'});
     }
 
     // Start the process when the page loads
