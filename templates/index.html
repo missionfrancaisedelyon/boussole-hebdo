@@ -1093,9 +1093,30 @@
     google.charts.setOnLoadCallback(initializeRCMDashboard);
 
     function initializeRCMDashboard() {
-      setDefaultDates();
-      fetchAndDrawCharts();
+    // 1. Set the dates in the input boxes immediately
+    setDefaultDates();
+
+    // 2. Set up a watcher to wait until the RCM tab actually becomes visible
+    const rcmView = document.getElementById('view-rcm');
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // The tab is now visible! It has real dimensions. Draw the charts!
+          fetchAndDrawCharts();
+          
+          // Disconnect the observer so we don't re-fetch data every single time 
+          // the user switches back and forth between tabs
+          observer.disconnect(); 
+        }
+      });
+    });
+
+    // Start watching the RCM page container
+    if (rcmView) {
+      observer.observe(rcmView);
     }
+  }
 
     // Calculates Last Monday and Most Recent Sunday
     function setDefaultDates() {
