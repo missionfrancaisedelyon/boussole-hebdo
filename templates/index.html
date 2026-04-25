@@ -760,21 +760,20 @@
   <div id="view-rcm" style="display: none;" class="page">
     <div class="top-title">Rapport RCM</div>
     <div class="top-sub">Statistiques hebdomadaires et tendances</div>
-    
-    <div class="date-filter">
-      <label for="start-date">Du:</label>
-      <input type="date" id="start-date">
-      <label for="end-date">Au:</label>
-      <input type="date" id="end-date">
-      <button onclick="drawDynamicCharts()">Mettre à jour</button>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+      <label for="start-date" style="font-family: sans-serif;">Du:</label>
+      <input type="date" id="start-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
+      
+      <label for="end-date" style="font-family: sans-serif; margin-left: 10px;">Au:</label>
+      <input type="date" id="end-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
+      
+      <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 10px; padding: 6px 12px;">Mettre à jour</button>
     </div>
     
-    <div class="rcm-charts">
-      <div class="chart-container" id="chart_div_1"></div>
-      <div class="chart-container" id="chart_div_2"></div>
-      <div class="chart-container" id="chart_div_3"></div>
-      <div class="chart-container" id="chart_div_4"></div>
-    </div>
+    <div class="rcm-charts" style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
+      <div id="rcm_pie_chart" style="width: 100%; max-width: 600px; height: 400px; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+      </div>
   </div>
 
   <script>
@@ -954,55 +953,98 @@
       }
     }
 
-    // Google Charts for RCM Dashboard
-    const SPREADSHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo';
-    const SHEET_NAME = 'Dashboard'; // Assuming the sheet name; adjust if necessary
-
+    // ── RCM DASHBOARD INITIALIZATION ──
     google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(drawDynamicCharts);
+    // We wait for Google Charts to load, then initialize defaults and draw.
+    google.charts.setOnLoadCallback(initializeRCMDashboard);
 
-    function drawDynamicCharts() {
-      let query = 'SELECT A, B, C, D, E';
-      const startDate = document.getElementById('start-date').value;
-      const endDate = document.getElementById('end-date').value;
-      if (startDate || endDate) {
-        query += ' WHERE';
-        if (startDate) query += ` A >= date '${startDate}'`;
-        if (startDate && endDate) query += ' AND';
-        if (endDate) query += ` A <= date '${endDate}'`;
-      }
-      const encodedQuery = encodeURIComponent(query);
-      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
-      const queryObj = new google.visualization.Query(url);
-      queryObj.send(handleQueryResponse);
+    const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
+    const SHEET_NAME = 'Form Responses';
+
+    function initializeRCMDashboard() {
+      setDefaultDates();
+      fetchAndDrawCharts();
     }
 
-    function handleQueryResponse(response) {
+    // Calculates Last Monday and Most Recent Sunday
+    function setDefaultDates() {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, etc.
+      
+      // Calculate days to subtract to get to the most recent Sunday
+      const daysSinceSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
+      const mostRecentSunday = new Date(today);
+      mostRecentSunday.setDate(today.getDate() - daysSinceSunday);
+      
+      // Last Monday is 6 days before the most recent Sunday
+      const lastMonday = new Date(mostRecentSunday);
+      lastMonday.setDate(mostRecentSunday.getDate() - 6);
+
+      // Format to YYYY-MM-DD
+      document.getElementById('start-date').value = lastMonday.toISOString().split('T')[0];
+      document.getElementById('end-date').value = mostRecentSunday.toISOString().split('T')[0];
+    }
+
+    function fetchAndDrawCharts() {
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+
+      // We use toDate(A) to safely convert Timestamps into pure dates for filtering
+      let queryString = `SELECT A, B, C, D, E WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
+
+      const encodedQuery = encodeURIComponent(queryString);
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
+
+      const query = new google.visualization.Query(url);
+      query.send(handleRCMData);
+    }
+
+    function handleRCMData(response) {
       if (response.isError()) {
         console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         return;
       }
-      const data = response.getDataTable();
-      // Chart 1: Timestamp (A) and B
-      const view1 = new google.visualization.DataView(data);
-      view1.setColumns([0, 1]);
-      const chart1 = new google.visualization.LineChart(document.getElementById('chart_div_1'));
-      chart1.draw(view1, {title: 'Chart 1'});
-      // Chart 2: Timestamp (A) and C
-      const view2 = new google.visualization.DataView(data);
-      view2.setColumns([0, 2]);
-      const chart2 = new google.visualization.LineChart(document.getElementById('chart_div_2'));
-      chart2.draw(view2, {title: 'Chart 2'});
-      // Chart 3: Timestamp (A) and D
-      const view3 = new google.visualization.DataView(data);
-      view3.setColumns([0, 3]);
-      const chart3 = new google.visualization.LineChart(document.getElementById('chart_div_3'));
-      chart3.draw(view3, {title: 'Chart 3'});
-      // Chart 4: Timestamp (A) and E
-      const view4 = new google.visualization.DataView(data);
-      view4.setColumns([0, 4]);
-      const chart4 = new google.visualization.LineChart(document.getElementById('chart_div_4'));
-      chart4.draw(view4, {title: 'Chart 4'});
+
+      const rawData = response.getDataTable();
+      
+      // --- CLIENT-SIDE AGGREGATION ---
+      // Instead of passing raw data to the chart, we count the text strings manually.
+      
+      let yesCount = 0;
+      let noCount = 0;
+
+      // Loop through the filtered rows from the Google Sheet
+      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+        // Column D (index 3) is "Did you have an RCM?"
+        const hadRcm = rawData.getValue(i, 3); 
+        
+        if (hadRcm === 'Yes') yesCount++;
+        if (hadRcm === 'No') noCount++;
+      }
+
+      // --- CREATE A NEW DATA TABLE FOR THE CHART ---
+      const chartData = new google.visualization.DataTable();
+      chartData.addColumn('string', 'Statut RCM');
+      chartData.addColumn('number', 'Nombre');
+      chartData.addRows([
+        ['Oui (' + yesCount + ')', yesCount],
+        ['Non (' + noCount + ')', noCount]
+      ]);
+
+      // Draw the Pie Chart
+      const options = {
+        title: 'Avez-vous eu un RCM cette semaine?',
+        colors: ['#2a6b4a', '#d9534f'], // Green for Yes, Red for No
+        pieHole: 0.4, // Makes it a nice donut chart
+        legend: { position: 'bottom' }
+      };
+
+      const chart = new google.visualization.PieChart(document.getElementById('rcm_pie_chart'));
+      chart.draw(chartData, options);
+
+      // You can repeat the aggregation pattern here for Stakes (Column B), Attendance (Column E), etc.
+      // Example: Create an object to track stake counts, loop through rawData.getValue(i, 1), 
+      // populate a new DataTable, and draw a BarChart in a different div!
     }
 
     // Start the process when the page loads
