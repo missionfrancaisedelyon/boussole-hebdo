@@ -804,6 +804,7 @@
     }
 
     // Fetch friends attendance from Google Sheet for current and last week
+    // Fetch friends attendance from Google Sheet for current and last week
     function fetchFriendsAttendanceData() {
       const today = new Date();
       const dayOfWeek = today.getDay();
@@ -819,19 +820,18 @@
       const lastWeekMonday = new Date(lastWeekSunday);
       lastWeekMonday.setDate(lastWeekSunday.getDate() - 6);
 
-      // Format dates
       const startDate = lastMonday.toISOString().split('T')[0];
       const endDate = mostRecentSunday.toISOString().split('T')[0];
       const lastWeekStart = lastWeekMonday.toISOString().split('T')[0];
       const lastWeekEnd = lastWeekSunday.toISOString().split('T')[0];
 
-      // Fetch current week friends attendance
+      // We only need 3 arguments now: Start, End, and the Key to store it under
       fetchFriendsForWeek(startDate, endDate, 'current');
-      // Fetch last week friends attendance  
       fetchFriendsForWeek(lastWeekStart, lastWeekEnd, 'lastWeek');
     }
 
     function fetchFriendsForWeek(startDate, endDate, weekKey) {
+      // Fetches Column F: "Of the friends you found THIS WEEK..."
       const queryString = `SELECT F WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
       const encodedQuery = encodeURIComponent(queryString);
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
@@ -840,89 +840,112 @@
       query.send((response) => {
         if (!response.isError()) {
           let total = 0;
-          const data = response.getDataTable();
-          for (let i = 0; i < data.getNumberOfRows(); i++) {
-            const friends = parseInt(data.getValue(i, 0));
+          const tableData = response.getDataTable(); 
+          for (let i = 0; i < tableData.getNumberOfRows(); i++) {
+            const friends = parseInt(tableData.getValue(i, 0));
             if (!isNaN(friends) && friends > 0) {
               total += friends;
             }
           }
+          // Save the total to our global object
           friendsAttendanceData[weekKey] = total;
+          
+          // TRIGGER: Redraw the funnel now that we have the Google Sheets data!
+          if (data && data.stages) {
+            buildFunnel();
+          }
         }
       });
     }
 
     function renderAll() {
+      // 1. Update Yearly Baptisms
       document.getElementById('disp-bap-year').textContent = data.baptismsYear;
+      
+      // 2. Update the Names list
       const namesEl = document.getElementById('names');
       namesEl.innerHTML = '';
       data.names.forEach(n => namesEl.innerHTML += `<div class="ni">${n}</div>`);
 
-      function renderMetric(prefix, obj, friendsData = null) {
+      // 3. Clean renderMetric function (No nested bar logic here anymore!)
+      function renderMetric(prefix, obj) {
+        // Calculate the maximum value to scale the bars correctly
         const max = Math.max(obj.tw, obj.lw, obj.avg) || 1;
+        
+        // Update the numbers
         document.getElementById(`disp-${prefix}-tw`).textContent = obj.tw.toLocaleString();
         document.getElementById(`disp-${prefix}-lw`).textContent = obj.lw.toLocaleString();
         document.getElementById(`disp-${prefix}-avg`).textContent = obj.avg.toLocaleString();
+        
+        // Update the visual width of the bars
         document.getElementById(`bar-${prefix}-tw`).style.width = (obj.tw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-lw`).style.width = (obj.lw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-avg`).style.width = (obj.avg / max * 100) + '%';
-        
-        // Add nested bar for friends attendance (only for members metric)
-        if (prefix === 'members' && friendsData) {
-          const friendsTwPercent = friendsData.current > 0 ? (friendsData.current / obj.tw * 100) : 0;
-          const friendsLwPercent = friendsData.lastWeek > 0 ? (friendsData.lastWeek / obj.lw * 100) : 0;
-          
-          // Create nested bar elements if they don't exist
-          let nestedBarTw = document.getElementById(`bar-${prefix}-tw-friends`);
-          if (!nestedBarTw) {
-            nestedBarTw = document.createElement('div');
-            nestedBarTw.id = `bar-${prefix}-tw-friends`;
-            nestedBarTw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
-            document.getElementById(`bar-${prefix}-tw`).parentElement.style.position = 'relative';
-            document.getElementById(`bar-${prefix}-tw`).parentElement.appendChild(nestedBarTw);
-          }
-          nestedBarTw.style.width = Math.min(friendsTwPercent, 100) + '%';
-          
-          let nestedBarLw = document.getElementById(`bar-${prefix}-lw-friends`);
-          if (!nestedBarLw) {
-            nestedBarLw = document.createElement('div');
-            nestedBarLw.id = `bar-${prefix}-lw-friends`;
-            nestedBarLw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
-            document.getElementById(`bar-${prefix}-lw`).parentElement.style.position = 'relative';
-            document.getElementById(`bar-${prefix}-lw`).parentElement.appendChild(nestedBarLw);
-          }
-          nestedBarLw.style.width = Math.min(friendsLwPercent, 100) + '%';
-        }
       }
+      
+      // 4. Render the two bottom side-cards (Leçons and Nouveaux Membres)
       renderMetric('lessons', data.lessons);
-      renderMetric('members', data.members, friendsAttendanceData);
+      renderMetric('members', data.members);
+      
+      // 5. Draw the Funnel (which now automatically handles injecting the nested friends data)
       buildFunnel();
     }
 
     function buildFunnel() {
       const funnel = document.getElementById('funnel');
+      if (!funnel) return;
+      
       const availW = funnel.offsetWidth || 400;
       const allVals = data.stages.flatMap(s => [s.tw, s.lw, s.avg]);
       const globalMax = Math.max(...allVals);
 
-      function barHTML(cls, w, color, opacity, labelTxt, val, numCls) {
-        const barStyle = `width:${Math.max(w, 4)}px;background:${color};${opacity ? 'opacity:' + opacity : ''}`;
+      function barHTML(cls, w, color, opacity, labelTxt, val, numCls, nestedFriendsCount = 0) {
+        const barStyle = `width:${Math.max(w, 4)}px;background:${color};${opacity ? 'opacity:' + opacity : ''};position:relative;overflow:hidden;`;
+        
+        let nestedHtml = '';
+        if (nestedFriendsCount > 0) {
+          const parentVal = parseInt(val.toString().replace(/,/g, '')) || 1;
+          const percent = Math.min((nestedFriendsCount / parentVal) * 100, 100);
+          // The inner nested bar (Dark Blue, sits under the text)
+          nestedHtml = `<div style="position:absolute; height:100%; width:${percent}%; background:#3A7FCC; top:0; left:0; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; box-sizing:border-box; z-index:2; border-radius:inherit;">
+            <span style="color:white; font-size:12px; font-weight:bold; font-family:sans-serif;">${nestedFriendsCount}</span>
+          </div>`;
+        }
+
+        // Wrap labels and numbers with z-index: 3 so they appear OVER the nested bar
+        const labelHtml = `<span class="bar-label" style="position:relative;z-index:3;">${labelTxt}</span>`;
+        const numHtml = `<span class="bar-num ${numCls}" style="position:relative;z-index:3;">${val}</span>`;
+
         if (w >= 105) {
-          return `<div class="bar-row"><div class="bar-pill ${cls}" style="${barStyle}"><span class="bar-label">${labelTxt}</span><span class="bar-num ${numCls}">${val}</span></div></div>`;
+          return `<div class="bar-row"><div class="bar-pill ${cls}" style="${barStyle}">${nestedHtml}${labelHtml}${numHtml}</div></div>`;
         } else {
-          return `<div class="bar-row" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;"><span class="outside-label" style="text-align:right;">${labelTxt}</span><div class="bar-pill ${cls}" style="${barStyle};padding:0;"></div><span class="outside-num ${numCls}" style="color:${color};text-align:left;">${val}</span></div>`;
+          return `<div class="bar-row" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;">
+            <span class="outside-label" style="text-align:right;">${labelTxt}</span>
+            <div class="bar-pill ${cls}" style="${barStyle};padding:0;">${nestedHtml}</div>
+            <span class="outside-num ${numCls}" style="color:${color};text-align:left;position:relative;z-index:3;">${val}</span>
+          </div>`;
         }
       }
 
       funnel.innerHTML = '';
       data.stages.forEach((s, i) => {
+        let nestedTw = 0;
+        let nestedLw = 0;
+        
+        // Check if the current stage is "Amis à l'église" (ignoring case and accents)
+        const stageName = s.label.toLowerCase();
+        if (stageName.includes("église") || stageName.includes("eglise")) {
+          nestedTw = friendsAttendanceData.current || 0;
+          nestedLw = friendsAttendanceData.lastWeek || 0;
+        }
+
         funnel.innerHTML += `${i > 0 ? '<div class="stage-sep"><div class="sep-line"></div></div>' : ''}
-      <div class="stage-block">
-        <div class="stage-label-txt">${s.label}</div>
-        ${barHTML('tw', (s.tw / globalMax) * availW, s.color, null, 'Cette semaine', s.tw.toLocaleString(), 'tw')}
-        ${barHTML('lw', (s.lw / globalMax) * availW, s.color, '0.6', 'Sem. dernière', s.lw.toLocaleString(), 'lw')}
-        ${barHTML('avg', (s.avg / globalMax) * availW, s.color, '0.35', 'Moyenne', s.avg.toLocaleString(), 'avg')}
-      </div>`;
+        <div class="stage-block">
+          <div class="stage-label-txt">${s.label}</div>
+          ${barHTML('tw', (s.tw / globalMax) * availW, s.color, null, 'Cette semaine', s.tw.toLocaleString(), 'tw', nestedTw)}
+          ${barHTML('lw', (s.lw / globalMax) * availW, s.color, '0.6', 'Sem. dernière', s.lw.toLocaleString(), 'lw', nestedLw)}
+          ${barHTML('avg', (s.avg / globalMax) * availW, s.color, '0.35', 'Moyenne', s.avg.toLocaleString(), 'avg', 0)}
+        </div>`;
       });
     }
 
@@ -1088,112 +1111,6 @@
 
       const query = new google.visualization.Query(url);
       query.send(handleRCMData);
-    }
-
-    function handleRCMData(response) {
-      if (response.isError()) {
-        console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
-        return;
-      }
-
-      const rawData = response.getDataTable();
-      
-      // --- DEDUPLICATION: One response per sector per week for RCM charts ---
-      const seenSectorWeeks = {}; // { weekKey + sectorKey: true }
-      const deduplicatedIndices = [];
-      
-      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        const timestamp = rawData.getValue(i, 0);
-        const sector = rawData.getValue(i, 2);
-        
-        // Extract week from timestamp (ISO week string)
-        const date = new Date(timestamp);
-        const weekKey = getISOWeek(date);
-        const sectorWeekKey = weekKey + "|" + sector;
-        
-        // Keep only the first response for each sector+week combo
-        if (!seenSectorWeeks[sectorWeekKey]) {
-          seenSectorWeeks[sectorWeekKey] = true;
-          deduplicatedIndices.push(i);
-        }
-      }
-      
-      // --- DATA AGGREGATION (using deduplicated data for RCM charts) ---
-      let rcmStatusCounts = { 'Oui': 0, 'Non': 0 };
-      let attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
-      let zoneMetrics = {}; // { zoneName: { rcmCount: 0, sectorsReporting: new Set() } }
-
-      // Loop through deduplicated indices for RCM charts
-      deduplicatedIndices.forEach(i => {
-        const stake = rawData.getValue(i, 1); // Column B: Stake
-        const unity = rawData.getValue(i, 2); // Column C: Unity (sector)
-        const hadRcm = rawData.getValue(i, 3); // Column D: Did you have an RCM?
-        const attendance = rawData.getValue(i, 4); // Column E: Attendance count
-
-        // Chart 1: RCM Status
-        if (hadRcm === 'Yes') rcmStatusCounts['Oui']++;
-        if (hadRcm === 'No') rcmStatusCounts['Non']++;
-
-        // Chart 2: Attendance counts (only for Yes responses)
-        if (hadRcm === 'Yes' && attendance) {
-          if (attendance === '1') attendanceCounts['1 membre']++;
-          else if (attendance === '2') attendanceCounts['2 membres']++;
-          else if (attendance === '3+') attendanceCounts['3+ membres']++;
-        }
-
-        // Chart 3: Zone metrics
-        if (!zoneMetrics[stake]) {
-          zoneMetrics[stake] = { rcmCount: 0, sectors: new Set() };
-        }
-        if (hadRcm === 'Yes') zoneMetrics[stake].rcmCount++;
-        zoneMetrics[stake].sectors.add(unity);
-      });
-
-      // --- FRIENDS ATTENDANCE DATA (all reports, no deduplication) ---
-      let friendsAttendanceTotal = 0;
-      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        const friendsAttendance = rawData.getValue(i, 5); // Column F: Friends attendance
-        // Count numeric values only
-        const count = parseInt(friendsAttendance);
-        if (!isNaN(count) && count > 0) {
-          friendsAttendanceTotal += count;
-        }
-      }
-
-      // Draw Chart 1: RCM Status Pie Chart
-      drawRCMStatusPie(rcmStatusCounts);
-
-      // Draw Chart 2: Attendance Pie Chart
-      drawAttendancePie(attendanceCounts);
-
-      // Draw Chart 3: Zone Bar Chart
-      drawZoneBarChart(zoneMetrics);
-      
-      // Update dashboard with friends attendance data
-      updateFriendsAttendance(friendsAttendanceTotal);
-    }
-
-    // Update the main dashboard with friends attendance data
-    function updateFriendsAttendance(friendsTotal) {
-      friendsAttendanceData.current = friendsTotal;
-      // Re-render the members metric with updated friends data
-      if (data.members) {
-        const membersEl = document.getElementById('disp-members-tw');
-        if (membersEl) {
-          const max = Math.max(data.members.tw, data.members.lw, data.members.avg) || 1;
-          const friendsTwPercent = friendsTotal > 0 ? (friendsTotal / data.members.tw * 100) : 0;
-          
-          let nestedBarTw = document.getElementById('bar-members-tw-friends');
-          if (!nestedBarTw) {
-            nestedBarTw = document.createElement('div');
-            nestedBarTw.id = 'bar-members-tw-friends';
-            nestedBarTw.style.cssText = 'position:absolute;height:100%;background:#5DADE2;opacity:0.6;top:0;left:0;border-radius:3px;transition:width 0.4s ease;';
-            document.getElementById('bar-members-tw').parentElement.style.position = 'relative';
-            document.getElementById('bar-members-tw').parentElement.appendChild(nestedBarTw);
-          }
-          nestedBarTw.style.width = Math.min(friendsTwPercent, 100) + '%';
-        }
-      }
     }
 
     // Helper function to get ISO week string from date
