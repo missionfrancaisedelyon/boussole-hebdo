@@ -1239,16 +1239,18 @@
     }
 
     function drawRCMStatusPie(counts) {
+      // We append the exact count to the label so it shows up in the legend!
       const chartData = google.visualization.arrayToDataTable([
         ['Statut', 'Nombre de secteurs'],
-        ['Oui', counts['Oui']],
-        ['Non', counts['Non']]
+        ['Oui (' + counts['Oui'] + ')', counts['Oui']],
+        ['Non (' + counts['Non'] + ')', counts['Non']]
       ]);
 
       const options = {
         title: '',
         colors: ['#2a6b4a', '#d9534f'],
         pieHole: 0.4,
+        // pieSliceText is removed, so it automatically renders percentages inside the slices
         legend: { position: 'bottom' },
         chartArea: { width: '90%', height: '85%' }
       };
@@ -1258,17 +1260,19 @@
     }
 
     function drawAttendancePie(counts) {
+      // We append the exact count to the label so it shows up in the legend!
       const chartData = google.visualization.arrayToDataTable([
         ['Participation', 'Nombre de secteurs'],
-        ['1 membre', counts['1 membre']],
-        ['2 membres', counts['2 membres']],
-        ['3+ membres', counts['3+ membres']]
+        ['1 membre (' + counts['1 membre'] + ')', counts['1 membre']],
+        ['2 membres (' + counts['2 membres'] + ')', counts['2 membres']],
+        ['3+ membres (' + counts['3+ membres'] + ')', counts['3+ membres']]
       ]);
 
       const options = {
         title: '',
         colors: ['#D4943A', '#3A7FCC', '#1D9E75'],
         pieHole: 0.4,
+        // pieSliceText is removed, so it automatically renders percentages inside the slices
         legend: { position: 'bottom' },
         chartArea: { width: '90%', height: '85%' }
       };
