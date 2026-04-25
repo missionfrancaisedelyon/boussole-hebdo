@@ -606,6 +606,65 @@
         grid-template-columns: 1fr 1fr; /* Creates exactly 2 equal columns */
       }
     }
+
+    /* ── RCM 3-COLUMN LAYOUT ── */
+    .rcm-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr 300px; /* Left menu, Center charts, Right details */
+      gap: 20px;
+      max-width: 1500px;
+      margin: 0 auto 40px auto;
+      padding: 0 20px;
+      align-items: start;
+    }
+
+    .rcm-side-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 18px;
+      max-height: 800px;
+      overflow-y: auto;
+    }
+
+    .rcm-side-card h3 {
+      margin-bottom: 15px; 
+      font-family: Georgia, serif; 
+      font-size: 16px; 
+      color: #1a1a1a;
+      border-bottom: 1px solid #eee; 
+      padding-bottom: 8px;
+    }
+
+    .zone-radio-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .zone-radio-label {
+      display: flex; 
+      gap: 8px; 
+      cursor: pointer; 
+      font-family: sans-serif; 
+      font-size: 14px;
+      color: #333;
+      align-items: center;
+    }
+
+    .zone-radio-label input[type="radio"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      accent-color: #2a6b4a;
+    }
+
+    /* Stack on smaller screens */
+    @media (max-width: 1100px) {
+      .rcm-layout {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -759,9 +818,9 @@
 
   <div id="view-rcm" style="display: none;" class="page">
     <div class="top-title">Rapport RCM</div>
-    <div class="top-sub">Statistiques hebdomadaires et tendances</div>
+    <div class="top-sub">Statistiques hebdomadaires et détails par zone</div>
 
-    <div style="text-align: center; margin-bottom: 20px;">
+    <div style="text-align: center; margin-bottom: 25px;">
       <label for="start-date" style="font-family: sans-serif;">Du:</label>
       <input type="date" id="start-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
       
@@ -771,25 +830,44 @@
       <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 10px; padding: 6px 12px;">Mettre à jour</button>
     </div>
     
-    <div class="rcm-charts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 20px; max-width: 1400px; margin: 0 auto;">
-      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Statut des RCM</div>
-        <div id="rcm_status_pie" style="width: 100%; height: 350px;"></div>
+    <div class="rcm-layout">
+      <div class="rcm-side-card" id="rcm-left-panel">
+        <h3>Filtre par Zone</h3>
+        <div class="zone-radio-list" id="zone-filter-container">
+          <div style="font-size: 12px; color: #888; font-style: italic;">Chargement des zones...</div>
+        </div>
       </div>
-      
-      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Participation aux RCM</div>
-        <div id="rcm_attendance_pie" style="width: 100%; height: 350px;"></div>
+
+      <div class="rcm-charts-center" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Statut des RCM</div>
+          <div id="rcm_status_pie" style="width: 100%; height: 300px;"></div>
+        </div>
+        
+        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Participation aux RCM</div>
+          <div id="rcm_attendance_pie" style="width: 100%; height: 300px;"></div>
+        </div>
+        
+        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM par Zone et Secteurs Rapportants</div>
+          <div id="rcm_zone_bar" style="width: 100%; height: 350px;"></div>
+        </div>
       </div>
-      
-      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
-        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM par Zone et Secteurs Rapportants</div>
-        <div id="rcm_zone_bar" style="width: 100%; height: 400px;"></div>
+
+      <div class="rcm-side-card" id="rcm-right-panel">
+        <h3 id="right-panel-title">Détails</h3>
+        <div id="right-panel-content">
+          <div style="font-size: 12px; color: #888; font-style: italic;">Sélectionnez une plage de dates pour voir les détails.</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
+    let rawRCMDataList = [];     // Stores all raw responses from the current query
+    let rcmZonesList = [];       // Stores the unique zone names
+    let selectedRCMZone = 'Mission'; // Keeps track of the currently selected radio button
     let data = {}; // We start empty, the server will fill this!
     let friendsAttendanceData = { current: 0, lastWeek: 0 }; // Friends attendance from Google Sheet
     
@@ -1160,60 +1238,103 @@
 
       const rawData = response.getDataTable();
       
-      // 1. DEDUPLICATION DICTIONARY
-      // We will store responses using a key like "2026-W08_Confluence"
-      const deduplicatedResponses = {};
+      // Reset global storage
+      rawRCMDataList = [];
+      let zonesSet = new Set();
 
+      // 1. EXTRACT ALL RAW DATA AND ZONES
       for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        const dateVal = rawData.getValue(i, 0); // Date object
+        const dateVal = rawData.getValue(i, 0); 
         if (!dateVal) continue;
         
         const zone = rawData.getValue(i, 1);
         const sector = rawData.getValue(i, 2);
         const hadRcm = rawData.getValue(i, 3);
         const attendance = rawData.getValue(i, 4);
-        
         const weekStr = getISOWeek(dateVal);
-        const uniqueKey = `${weekStr}_${sector}`;
-        
-        // If multiple reports exist for the same sector in the same week, 
-        // this naturally overwrites the old one, keeping only the latest!
-        deduplicatedResponses[uniqueKey] = {
+
+        if (zone) zonesSet.add(zone);
+
+        rawRCMDataList.push({
+          date: dateVal,
+          weekStr: weekStr,
           zone: zone,
           sector: sector,
           hadRcm: hadRcm,
           attendance: attendance
-        };
+        });
       }
 
-      // 2. COUNTERS FOR THE GRAPHS
+      rcmZonesList = Array.from(zonesSet).sort();
+
+      // 2. BUILD THE MENU AND RENDER THE VIEW
+      buildZoneMenu();
+      updateRCMView();
+    }
+
+    function buildZoneMenu() {
+      const container = document.getElementById('zone-filter-container');
+      
+      // Ensure 'Mission' remains selected if a previously selected zone isn't in the new date range
+      if (selectedRCMZone !== 'Mission' && !rcmZonesList.includes(selectedRCMZone)) {
+        selectedRCMZone = 'Mission';
+      }
+
+      let html = `<label class="zone-radio-label">
+        <input type="radio" name="zone-filter" value="Mission" ${selectedRCMZone === 'Mission' ? 'checked' : ''} onchange="changeRCMZone('Mission')">
+        Mission (Toutes)
+      </label>`;
+
+      rcmZonesList.forEach(z => {
+        html += `<label class="zone-radio-label">
+          <input type="radio" name="zone-filter" value="${z}" ${selectedRCMZone === z ? 'checked' : ''} onchange="changeRCMZone('${z}')">
+          ${z}
+        </label>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // Triggered when a user clicks a radio button
+    function changeRCMZone(zoneName) {
+      selectedRCMZone = zoneName;
+      updateRCMView(); // Instantly update charts and details without fetching again!
+    }
+
+    // Filters the data, deduplicates it, and draws the charts/panels
+    function updateRCMView() {
+      const deduplicatedResponses = {};
       const statusCounts = { 'Oui': 0, 'Non': 0 };
       const attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
-      const zoneMetrics = {}; // Format: { "ZoneName": { rcmCount: 0, sectors: Set() } }
+      const zoneMetrics = {}; 
 
-      // 3. AGGREGATE THE DEDUPLICATED DATA
+      // 1. FILTER AND DEDUPLICATE
+      rawRCMDataList.forEach(entry => {
+        // Apply the active filter
+        if (selectedRCMZone !== 'Mission' && entry.zone !== selectedRCMZone) return;
+
+        // Deduplicate: Keep only the latest report per sector, per week
+        const uniqueKey = `${entry.weekStr}_${entry.sector}`;
+        deduplicatedResponses[uniqueKey] = entry;
+      });
+
+      // 2. AGGREGATE FOR CHARTS
       Object.values(deduplicatedResponses).forEach(entry => {
-        // Handle both English and French just in case form data varies
         const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
         
-        // --- Status Pie Chart ---
+        // Status Pie
         if (isYes) statusCounts['Oui']++;
         else statusCounts['Non']++;
 
-        // --- Zone Bar Chart ---
+        // Zone Bar Chart
         if (entry.zone) {
           if (!zoneMetrics[entry.zone]) {
-            // Using a Set ensures we count unique reporting sectors in the zone safely
             zoneMetrics[entry.zone] = { rcmCount: 0, sectors: new Set() };
           }
           zoneMetrics[entry.zone].sectors.add(entry.sector);
-          if (isYes) {
-            zoneMetrics[entry.zone].rcmCount++;
-          }
+          if (isYes) zoneMetrics[entry.zone].rcmCount++;
         }
 
-        // --- Attendance Pie Chart ---
-        // Only count attendance if they actually had an RCM
+        // Attendance Pie
         if (isYes && entry.attendance) {
           const attStr = entry.attendance.toString();
           if (attStr.includes('1')) attendanceCounts['1 membre']++;
@@ -1222,11 +1343,79 @@
         }
       });
 
-      // 4. DRAW THE GRAPHS
-      // Passing the aggregated counts to the drawing functions already in your code
+      // Update Charts
       drawRCMStatusPie(statusCounts);
       drawAttendancePie(attendanceCounts);
       drawZoneBarChart(zoneMetrics);
+
+      // Update Right Panel Details
+      buildRightPanelDetails(deduplicatedResponses);
+    }
+
+    function buildRightPanelDetails(deduplicatedData) {
+      const container = document.getElementById('right-panel-content');
+      const title = document.getElementById('right-panel-title');
+
+      // Group the deduplicated data by week
+      const weeks = {};
+      Object.values(deduplicatedData).forEach(entry => {
+         if (!weeks[entry.weekStr]) weeks[entry.weekStr] = [];
+         weeks[entry.weekStr].push(entry);
+      });
+
+      // Sort weeks from newest to oldest
+      const sortedWeeks = Object.keys(weeks).sort().reverse();
+      let html = '';
+
+      if (selectedRCMZone === 'Mission') {
+         title.textContent = 'Totaux des Zones par Semaine';
+         sortedWeeks.forEach(w => {
+            html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
+               <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
+
+            // Group by zone for the mission view
+            const zoneTotals = {};
+            weeks[w].forEach(entry => {
+               if (!zoneTotals[entry.zone]) zoneTotals[entry.zone] = { total: 0, rcm: 0 };
+               zoneTotals[entry.zone].total++;
+               if (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui') zoneTotals[entry.zone].rcm++;
+            });
+
+            Object.keys(zoneTotals).sort().forEach(z => {
+               html += `<div style="font-size: 13px; font-family: sans-serif; color: #444; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                  <strong>${z}</strong>
+                  <span>${zoneTotals[z].rcm} RCM / ${zoneTotals[z].total} rapp.</span>
+               </div>`;
+            });
+            html += `</div>`;
+         });
+      } else {
+         title.textContent = `Historique: ${selectedRCMZone}`;
+         sortedWeeks.forEach(w => {
+            html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
+               <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
+
+            // Sort sectors alphabetically
+            weeks[w].sort((a,b) => a.sector.localeCompare(b.sector)).forEach(entry => {
+               const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
+               const attStr = isYes ? (entry.attendance ? ` <span style="color:#888; font-size:11px;">(${entry.attendance})</span>` : '') : '';
+               const statusColor = isYes ? '#2a6b4a' : '#d9534f';
+               const statusText = isYes ? 'Oui' : 'Non';
+
+               html += `<div style="font-size: 13px; font-family: sans-serif; margin-bottom: 6px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
+                  <span style="color: #222; font-weight: bold;">${entry.sector}</span>
+                  <span style="color: ${statusColor}; text-align: right; font-weight: bold;">${statusText}${attStr}</span>
+               </div>`;
+            });
+            html += `</div>`;
+         });
+      }
+
+      if (html === '') {
+         html = `<div style="font-size: 13px; color: #888; font-style: italic;">Aucune donnée disponible pour cette sélection.</div>`;
+      }
+
+      container.innerHTML = html;
     }
 
     // Helper function to get ISO week string from date
