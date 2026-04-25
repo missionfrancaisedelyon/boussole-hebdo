@@ -1131,6 +1131,83 @@
       query.send(handleRCMData);
     }
 
+    function handleRCMData(response) {
+      if (response.isError()) {
+        console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        return;
+      }
+
+      const rawData = response.getDataTable();
+      
+      // 1. DEDUPLICATION DICTIONARY
+      // We will store responses using a key like "2026-W08_Confluence"
+      const deduplicatedResponses = {};
+
+      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+        const dateVal = rawData.getValue(i, 0); // Date object
+        if (!dateVal) continue;
+        
+        const zone = rawData.getValue(i, 1);
+        const sector = rawData.getValue(i, 2);
+        const hadRcm = rawData.getValue(i, 3);
+        const attendance = rawData.getValue(i, 4);
+        
+        const weekStr = getISOWeek(dateVal);
+        const uniqueKey = `${weekStr}_${sector}`;
+        
+        // If multiple reports exist for the same sector in the same week, 
+        // this naturally overwrites the old one, keeping only the latest!
+        deduplicatedResponses[uniqueKey] = {
+          zone: zone,
+          sector: sector,
+          hadRcm: hadRcm,
+          attendance: attendance
+        };
+      }
+
+      // 2. COUNTERS FOR THE GRAPHS
+      const statusCounts = { 'Oui': 0, 'Non': 0 };
+      const attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
+      const zoneMetrics = {}; // Format: { "ZoneName": { rcmCount: 0, sectors: Set() } }
+
+      // 3. AGGREGATE THE DEDUPLICATED DATA
+      Object.values(deduplicatedResponses).forEach(entry => {
+        // Handle both English and French just in case form data varies
+        const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
+        
+        // --- Status Pie Chart ---
+        if (isYes) statusCounts['Oui']++;
+        else statusCounts['Non']++;
+
+        // --- Zone Bar Chart ---
+        if (entry.zone) {
+          if (!zoneMetrics[entry.zone]) {
+            // Using a Set ensures we count unique reporting sectors in the zone safely
+            zoneMetrics[entry.zone] = { rcmCount: 0, sectors: new Set() };
+          }
+          zoneMetrics[entry.zone].sectors.add(entry.sector);
+          if (isYes) {
+            zoneMetrics[entry.zone].rcmCount++;
+          }
+        }
+
+        // --- Attendance Pie Chart ---
+        // Only count attendance if they actually had an RCM
+        if (isYes && entry.attendance) {
+          const attStr = entry.attendance.toString();
+          if (attStr.includes('1')) attendanceCounts['1 membre']++;
+          else if (attStr.includes('2')) attendanceCounts['2 membres']++;
+          else if (attStr.includes('3')) attendanceCounts['3+ membres']++;
+        }
+      });
+
+      // 4. DRAW THE GRAPHS
+      // Passing the aggregated counts to the drawing functions already in your code
+      drawRCMStatusPie(statusCounts);
+      drawAttendancePie(attendanceCounts);
+      drawZoneBarChart(zoneMetrics);
+    }
+
     // Helper function to get ISO week string from date
     function getISOWeek(date) {
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
