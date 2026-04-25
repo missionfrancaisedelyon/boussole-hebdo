@@ -968,7 +968,7 @@
 
     function fetchFriendsAverage() {
       // Query just Column H, and limit to 1 row (Row 1)
-      const queryString = `SELECT H LIMIT 2`;
+      const queryString = `SELECT H LIMIT 1`;
       const encodedQuery = encodeURIComponent(queryString);
       
       // We append &headers=0 so Google doesn't accidentally treat H1 as a text header
