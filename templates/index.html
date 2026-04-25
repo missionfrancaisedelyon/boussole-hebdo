@@ -665,6 +665,53 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ── TOGGLE SWITCH & BASIC MODE ── */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: #2a6b4a; /* Mission Green */
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Basic Mode Layout (Side panels hidden, charts expanded) */
+    .rcm-layout.basic-mode {
+      grid-template-columns: 1fr;
+      max-width: 1000px; /* Keeps the charts from stretching too absurdly wide on big screens */
+    }
+    .rcm-layout.basic-mode .rcm-side-card {
+      display: none;
+    }
   </style>
 </head>
 
@@ -830,38 +877,25 @@
       <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 10px; padding: 6px 12px;">Mettre à jour</button>
     </div>
     
-    <div class="rcm-layout">
-      <div class="rcm-side-card" id="rcm-left-panel">
-        <h3>Filtre par Zone</h3>
-        <div class="zone-radio-list" id="zone-filter-container">
-          <div style="font-size: 12px; color: #888; font-style: italic;">Chargement des zones...</div>
-        </div>
-      </div>
+    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 25px;">
+      <label for="start-date" style="font-family: sans-serif;">Du:</label>
+      <input type="date" id="start-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
+      
+      <label for="end-date" style="font-family: sans-serif; margin-left: 15px;">Au:</label>
+      <input type="date" id="end-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
+      
+      <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 15px; padding: 6px 12px;">Mettre à jour</button>
 
-      <div class="rcm-charts-center" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Statut des RCM</div>
-          <div id="rcm_status_pie" style="width: 100%; height: 300px;"></div>
-        </div>
-        
-        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Participation aux RCM</div>
-          <div id="rcm_attendance_pie" style="width: 100%; height: 300px;"></div>
-        </div>
-        
-        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM par Zone et Secteurs Rapportants</div>
-          <div id="rcm_zone_bar" style="width: 100%; height: 350px;"></div>
-        </div>
-      </div>
-
-      <div class="rcm-side-card" id="rcm-right-panel">
-        <h3 id="right-panel-title">Détails</h3>
-        <div id="right-panel-content">
-          <div style="font-size: 12px; color: #888; font-style: italic;">Sélectionnez une plage de dates pour voir les détails.</div>
-        </div>
+      <div style="display: flex; align-items: center; margin-left: 30px; gap: 8px; border-left: 2px solid #ddd; padding-left: 30px;">
+        <span style="font-family: sans-serif; font-size: 14px; font-weight: bold; color: #2a6b4a;">Analyser</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="analyze-toggle" onchange="toggleAnalysisMode()">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
     </div>
+    
+    <div class="rcm-layout basic-mode">
   </div>
 
   <script>
@@ -1115,6 +1149,33 @@
         toggleBtn.innerHTML = '📊 RCM Stats';
         editBtn.style.display = 'block';
       }
+    }
+
+    function toggleAnalysisMode() {
+      const isAnalysisMode = document.getElementById('analyze-toggle').checked;
+      const layoutElement = document.querySelector('.rcm-layout');
+      
+      if (isAnalysisMode) {
+        // Switch is ON: Reveal the 3-column analysis layout
+        layoutElement.classList.remove('basic-mode');
+      } else {
+        // Switch is OFF: Hide side panels and go back to full-width
+        layoutElement.classList.add('basic-mode');
+        
+        // Smart UX: If they close the analysis mode while looking at a specific zone, 
+        // silently reset the data back to the Mission totals.
+        if (selectedRCMZone !== 'Mission') {
+           selectedRCMZone = 'Mission';
+           const missionRadio = document.querySelector('input[name="zone-filter"][value="Mission"]');
+           if (missionRadio) missionRadio.checked = true;
+        }
+      }
+      
+      // CRITICAL: We wait 50ms for the CSS grid to change shape, 
+      // then we tell Google Charts to redraw so they fit the new size perfectly!
+      setTimeout(() => {
+         updateRCMView();
+      }, 50);
     }
 
     function downloadJSON() {
