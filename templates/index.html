@@ -771,9 +771,22 @@
       <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 10px; padding: 6px 12px;">Mettre à jour</button>
     </div>
     
-    <div class="rcm-charts" style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
-      <div id="rcm_pie_chart" style="width: 100%; max-width: 600px; height: 400px; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+    <div class="rcm-charts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 20px; max-width: 1400px; margin: 0 auto;">
+      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
+        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Statut des RCM</div>
+        <div id="rcm_status_pie" style="width: 100%; height: 350px;"></div>
       </div>
+      
+      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
+        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Participation aux RCM</div>
+        <div id="rcm_attendance_pie" style="width: 100%; height: 350px;"></div>
+      </div>
+      
+      <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
+        <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM par Zone et Secteurs Rapportants</div>
+        <div id="rcm_zone_bar" style="width: 100%; height: 400px;"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -954,12 +967,12 @@
     }
 
     // ── RCM DASHBOARD INITIALIZATION ──
-    google.charts.load('current', {'packages':['corechart']});
+    google.charts.load('current', {'packages':['corechart', 'bar']});
     // We wait for Google Charts to load, then initialize defaults and draw.
     google.charts.setOnLoadCallback(initializeRCMDashboard);
 
     const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
-    const SHEET_NAME = 'Form Responses';
+    const SHEET_NAME = 'Form Responses'; // Verify your tab name
 
     function initializeRCMDashboard() {
       setDefaultDates();
@@ -1007,44 +1020,117 @@
 
       const rawData = response.getDataTable();
       
-      // --- CLIENT-SIDE AGGREGATION ---
-      // Instead of passing raw data to the chart, we count the text strings manually.
-      
-      let yesCount = 0;
-      let noCount = 0;
+      // --- DATA AGGREGATION ---
+      let rcmStatusCounts = { 'Oui': 0, 'Non': 0 };
+      let attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
+      let zoneMetrics = {}; // { zoneName: { rcmCount: 0, sectorsReporting: new Set() } }
 
-      // Loop through the filtered rows from the Google Sheet
+      // Loop through all rows
       for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        // Column D (index 3) is "Did you have an RCM?"
-        const hadRcm = rawData.getValue(i, 3); 
-        
-        if (hadRcm === 'Yes') yesCount++;
-        if (hadRcm === 'No') noCount++;
+        const stake = rawData.getValue(i, 1); // Column B: Stake
+        const unity = rawData.getValue(i, 2); // Column C: Unity (sector)
+        const hadRcm = rawData.getValue(i, 3); // Column D: Did you have an RCM?
+        const attendance = rawData.getValue(i, 4); // Column E: Attendance count
+
+        // Chart 1: RCM Status
+        if (hadRcm === 'Yes') rcmStatusCounts['Oui']++;
+        if (hadRcm === 'No') rcmStatusCounts['Non']++;
+
+        // Chart 2: Attendance counts (only for Yes responses)
+        if (hadRcm === 'Yes' && attendance) {
+          if (attendance === '1') attendanceCounts['1 membre']++;
+          else if (attendance === '2') attendanceCounts['2 membres']++;
+          else if (attendance === '3+') attendanceCounts['3+ membres']++;
+        }
+
+        // Chart 3: Zone metrics
+        if (!zoneMetrics[stake]) {
+          zoneMetrics[stake] = { rcmCount: 0, sectors: new Set() };
+        }
+        if (hadRcm === 'Yes') zoneMetrics[stake].rcmCount++;
+        zoneMetrics[stake].sectors.add(unity);
       }
 
-      // --- CREATE A NEW DATA TABLE FOR THE CHART ---
-      const chartData = new google.visualization.DataTable();
-      chartData.addColumn('string', 'Statut RCM');
-      chartData.addColumn('number', 'Nombre');
-      chartData.addRows([
-        ['Oui (' + yesCount + ')', yesCount],
-        ['Non (' + noCount + ')', noCount]
+      // Draw Chart 1: RCM Status Pie Chart
+      drawRCMStatusPie(rcmStatusCounts);
+
+      // Draw Chart 2: Attendance Pie Chart
+      drawAttendancePie(attendanceCounts);
+
+      // Draw Chart 3: Zone Bar Chart
+      drawZoneBarChart(zoneMetrics);
+    }
+
+    function drawRCMStatusPie(counts) {
+      const chartData = google.visualization.arrayToDataTable([
+        ['Statut', 'Nombre de secteurs'],
+        ['Oui', counts['Oui']],
+        ['Non', counts['Non']]
       ]);
 
-      // Draw the Pie Chart
       const options = {
-        title: 'Avez-vous eu un RCM cette semaine?',
-        colors: ['#2a6b4a', '#d9534f'], // Green for Yes, Red for No
-        pieHole: 0.4, // Makes it a nice donut chart
-        legend: { position: 'bottom' }
+        title: '',
+        colors: ['#2a6b4a', '#d9534f'],
+        pieHole: 0.4,
+        legend: { position: 'bottom' },
+        chartArea: { width: '90%', height: '85%' }
       };
 
-      const chart = new google.visualization.PieChart(document.getElementById('rcm_pie_chart'));
+      const chart = new google.visualization.PieChart(document.getElementById('rcm_status_pie'));
       chart.draw(chartData, options);
+    }
 
-      // You can repeat the aggregation pattern here for Stakes (Column B), Attendance (Column E), etc.
-      // Example: Create an object to track stake counts, loop through rawData.getValue(i, 1), 
-      // populate a new DataTable, and draw a BarChart in a different div!
+    function drawAttendancePie(counts) {
+      const chartData = google.visualization.arrayToDataTable([
+        ['Participation', 'Nombre de secteurs'],
+        ['1 membre', counts['1 membre']],
+        ['2 membres', counts['2 membres']],
+        ['3+ membres', counts['3+ membres']]
+      ]);
+
+      const options = {
+        title: '',
+        colors: ['#D4943A', '#3A7FCC', '#1D9E75'],
+        pieHole: 0.4,
+        legend: { position: 'bottom' },
+        chartArea: { width: '90%', height: '85%' }
+      };
+
+      const chart = new google.visualization.PieChart(document.getElementById('rcm_attendance_pie'));
+      chart.draw(chartData, options);
+    }
+
+    function drawZoneBarChart(zoneMetrics) {
+      // Convert to array and sort by stake name
+      const zoneArray = Object.keys(zoneMetrics)
+        .sort()
+        .map(zone => [
+          zone,
+          zoneMetrics[zone].rcmCount,
+          zoneMetrics[zone].sectors.size
+        ]);
+
+      const chartData = google.visualization.arrayToDataTable([
+        ['Zone', 'Réunions RCM', 'Secteurs Rapportants'],
+        ...zoneArray
+      ]);
+
+      const options = {
+        title: '',
+        legend: { position: 'bottom' },
+        bar: { groupWidth: '75%' },
+        colors: ['#2a6b4a', '#D4943A'],
+        chartArea: { width: '85%', height: '80%' },
+        hAxis: {
+          title: 'Zone'
+        },
+        vAxis: {
+          title: 'Nombre'
+        }
+      };
+
+      const chart = new google.visualization.ColumnChart(document.getElementById('rcm_zone_bar'));
+      chart.draw(chartData, options);
     }
 
     // Start the process when the page loads
