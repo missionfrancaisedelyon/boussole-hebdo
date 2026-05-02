@@ -953,6 +953,7 @@
     let rawRCMDataList = [];     // Stores all raw responses from the current query
     let rcmZonesList = [];       // Stores the unique zone names
     let selectedRCMZone = 'Mission'; // Keeps track of the currently selected radio button
+    let selectedRCMSector = null;
     let data = {}; // We start empty, the server will fill this!
     let friendsAttendanceData = { current: 0, lastWeek: 0, average: 0 }; // Friends attendance from Google Sheet
 
@@ -1392,12 +1393,29 @@
     function buildZoneMenu() {
       const container = document.getElementById('zone-filter-container');
 
-      // Ensure 'Mission' remains selected if a previously selected zone isn't in the new date range
       if (selectedRCMZone !== 'Mission' && !rcmZonesList.includes(selectedRCMZone)) {
         selectedRCMZone = 'Mission';
       }
 
-      let html = `<label class="zone-radio-label">
+      // Check if switch was previously checked to maintain state during re-renders
+      const wasChecked = document.getElementById('hide-missing-toggle')?.checked || false;
+
+      // Add the Toggle Switch UI
+      let html = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+        <label class="toggle-switch" style="display:flex; align-items:center; gap:8px; width:auto; cursor:pointer;">
+          <div style="position:relative; width:34px; height:20px; display:inline-block;">
+            <input type="checkbox" id="hide-missing-toggle" onchange="updateRCMView()" style="opacity:0; width:0; height:0;" ${wasChecked ? 'checked' : ''}>
+            <span class="toggle-slider" style="border-radius:20px;"></span>
+          </div>
+          <span style="font-size:13px; font-family:sans-serif; color:#555;">Masquer "Non Reporté"</span>
+        </label>
+        <style>
+          #hide-missing-toggle:checked + .toggle-slider:before { transform: translateX(14px); }
+          #hide-missing-toggle ~ .toggle-slider:before { height: 14px; width: 14px; left: 3px; bottom: 3px; }
+        </style>
+      </div>`;
+
+      html += `<label class="zone-radio-label">
         <input type="radio" name="zone-filter" value="Mission" ${selectedRCMZone === 'Mission' ? 'checked' : ''} onchange="changeRCMZone('Mission')">
         Mission (Toutes)
       </label>`;
@@ -1411,9 +1429,9 @@
       container.innerHTML = html;
     }
 
-    // Triggered when a user clicks a radio button
     function changeRCMZone(zoneName) {
       selectedRCMZone = zoneName;
+      selectedRCMSector = null; // Reset sector selection when changing zones
       updateRCMView(); // Instantly update charts and details without fetching again!
     }
 
@@ -1424,15 +1442,15 @@
       const attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
       const zoneMetrics = {};
       const activeWeeks = new Set();
-      const knownSectors = {}; // Maps sector -> zone to keep track of known sectors
+      const knownSectors = {};
+      const hideMissing = document.getElementById('hide-missing-toggle') ? document.getElementById('hide-missing-toggle').checked : false;
 
       // 1. GATHER ALL KNOWN WEEKS AND SECTORS
       rawRCMDataList.forEach(entry => {
-        activeWeeks.add(entry.weekStr); // Track all active weeks in the range
-
+        activeWeeks.add(entry.weekStr);
         if (selectedRCMZone !== 'Mission' && entry.zone !== selectedRCMZone) return;
 
-        knownSectors[entry.sector] = entry.zone; // Record that this sector exists
+        knownSectors[entry.sector] = entry.zone;
         const uniqueKey = `${entry.weekStr}_${entry.sector}`;
         deduplicatedResponses[uniqueKey] = entry;
       });
@@ -1442,42 +1460,59 @@
         Object.keys(knownSectors).forEach(sector => {
           const zone = knownSectors[sector];
           const uniqueKey = `${w}_${sector}`;
-
-          // If no report exists for this week + sector combo, synthesize one!
           if (!deduplicatedResponses[uniqueKey]) {
-            deduplicatedResponses[uniqueKey] = {
-              weekStr: w,
-              zone: zone,
-              sector: sector,
-              hadRcm: 'Non Reporté',
-              attendance: ''
-            };
+            deduplicatedResponses[uniqueKey] = { weekStr: w, zone: zone, sector: sector, hadRcm: 'Non Reporté', attendance: '' };
           }
         });
       });
 
-      // 2. AGGREGATE FOR CHARTS
+      // 1.6. FILTER OUT MISSING IF TOGGLE IS CHECKED
+      if (hideMissing) {
+        Object.keys(deduplicatedResponses).forEach(key => {
+          if (deduplicatedResponses[key].hadRcm === 'Non Reporté') delete deduplicatedResponses[key];
+        });
+      }
+
+      // --- UI ROUTING FOR CENTER CHARTS ---
+      const centerChildren = document.querySelectorAll('.rcm-charts-center > div');
+      let sectorContainer = document.getElementById('rcm_sector_history_container');
+
+      // Create the container dynamically if it doesn't exist
+      if (!sectorContainer) {
+        sectorContainer = document.createElement('div');
+        sectorContainer.id = 'rcm_sector_history_container';
+        sectorContainer.style.cssText = 'background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;';
+        document.querySelector('.rcm-charts-center').appendChild(sectorContainer);
+      }
+
+      if (selectedRCMSector) {
+        // Hide default charts, show Sector Chart
+        Array.from(centerChildren).forEach(child => { if (child.id !== 'rcm_sector_history_container') child.style.display = 'none'; });
+        sectorContainer.style.display = 'block';
+        drawSectorHistoryChart(deduplicatedResponses, activeWeeks);
+        buildRightPanelDetails(deduplicatedResponses);
+        return; // Exit early, no need to calculate zone averages!
+      } else {
+        // Show default charts, hide Sector Chart
+        Array.from(centerChildren).forEach(child => { if (child.id !== 'rcm_sector_history_container') child.style.display = 'block'; });
+        sectorContainer.style.display = 'none';
+      }
+
+      // 2. AGGREGATE FOR CHARTS (Only runs if we aren't in Sector View)
       Object.values(deduplicatedResponses).forEach(entry => {
         const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
         const isMissing = (entry.hadRcm === 'Non Reporté');
 
-        // Status Pie Update
         if (isYes) statusCounts['Oui']++;
         else if (isMissing) statusCounts['Non Reporté']++;
         else statusCounts['Non']++;
 
-        // Zone Bar Chart Update
         if (entry.zone) {
-          if (!zoneMetrics[entry.zone]) {
-            zoneMetrics[entry.zone] = { rcmCount: 0, reportCount: 0 };
-          }
-          if (!isMissing) {
-            zoneMetrics[entry.zone].reportCount++; // Only count ACTUAL submitted reports
-          }
+          if (!zoneMetrics[entry.zone]) zoneMetrics[entry.zone] = { rcmCount: 0, reportCount: 0 };
+          if (!isMissing) zoneMetrics[entry.zone].reportCount++;
           if (isYes) zoneMetrics[entry.zone].rcmCount++;
         }
 
-        // Attendance Pie
         if (isYes && entry.attendance) {
           const attStr = entry.attendance.toString();
           if (attStr.includes('1')) attendanceCounts['1 membre']++;
@@ -1486,23 +1521,15 @@
         }
       });
 
-      // 3. CALCULATE AVERAGES FOR MULTI-WEEK VIEWS
       const numWeeks = activeWeeks.size || 1;
       const averagedZoneMetrics = {};
-
       Object.keys(zoneMetrics).forEach(zone => {
-        averagedZoneMetrics[zone] = {
-          avgRcm: zoneMetrics[zone].rcmCount / numWeeks,
-          avgReports: zoneMetrics[zone].reportCount / numWeeks
-        };
+        averagedZoneMetrics[zone] = { avgRcm: zoneMetrics[zone].rcmCount / numWeeks, avgReports: zoneMetrics[zone].reportCount / numWeeks };
       });
 
-      // Update Charts
       drawRCMStatusPie(statusCounts);
       drawAttendancePie(attendanceCounts);
       drawZoneBarChart(averagedZoneMetrics, numWeeks);
-
-      // Update Right Panel Details
       buildRightPanelDetails(deduplicatedResponses);
     }
 
@@ -1510,33 +1537,48 @@
       const container = document.getElementById('right-panel-content');
       const title = document.getElementById('right-panel-title');
 
-      // Group the deduplicated data by week
       const weeks = {};
       Object.values(deduplicatedData).forEach(entry => {
         if (!weeks[entry.weekStr]) weeks[entry.weekStr] = [];
         weeks[entry.weekStr].push(entry);
       });
 
-      // Sort weeks from newest to oldest
       const sortedWeeks = Object.keys(weeks).sort().reverse();
       let html = '';
 
-      if (selectedRCMZone === 'Mission') {
+      if (selectedRCMSector) {
+        // SECTOR VIEW
+        title.innerHTML = `<button onclick="clearSectorView()" style="background:none; border:none; cursor:pointer; color:#2a6b4a; font-weight:bold; margin-right:8px; font-size:16px;">&larr;</button> ${selectedRCMSector}`;
+        sortedWeeks.forEach(w => {
+          const entries = weeks[w].filter(e => e.sector === selectedRCMSector);
+          if (entries.length === 0) return;
+          const entry = entries[0];
+
+          const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
+          const isMissing = (entry.hadRcm === 'Non Reporté');
+          const attStr = isYes ? (entry.attendance ? ` <span style="color:#888; font-size:11px;">(${entry.attendance})</span>` : '') : '';
+
+          let statusColor = '#d9534f'; let statusText = 'Non';
+          if (isYes) { statusColor = '#2a6b4a'; statusText = 'Oui'; }
+          else if (isMissing) { statusColor = '#888888'; statusText = 'Non Reporté'; }
+
+          html += `<div style="margin-bottom: 12px; border-bottom: 1px solid #f0ebe0; padding-bottom: 8px; display: grid; grid-template-columns: 1fr auto; align-items: center;">
+           <span style="font-size: 13px; color: #555; font-family: sans-serif; font-weight:bold;">Semaine ${w}</span>
+           <span style="font-size: 13px; color: ${statusColor}; text-align: right; font-weight: bold;">${statusText}${attStr}</span>
+        </div>`;
+        });
+      } else if (selectedRCMZone === 'Mission') {
+        // MISSION VIEW
         title.textContent = 'Totaux des Zones par Semaine';
         sortedWeeks.forEach(w => {
           html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
            <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
 
-          // Group by zone for the mission view
           const zoneTotals = {};
           weeks[w].forEach(entry => {
             if (!zoneTotals[entry.zone]) zoneTotals[entry.zone] = { total: 0, rcm: 0, missing: 0 };
-
-            if (entry.hadRcm === 'Non Reporté') {
-              zoneTotals[entry.zone].missing++;
-            } else {
-              zoneTotals[entry.zone].total++; // Count actual reports
-            }
+            if (entry.hadRcm === 'Non Reporté') zoneTotals[entry.zone].missing++;
+            else zoneTotals[entry.zone].total++;
             if (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui') zoneTotals[entry.zone].rcm++;
           });
 
@@ -1550,30 +1592,29 @@
           html += `</div>`;
         });
       } else {
+        // ZONE VIEW (Sectors become clickable!)
         title.textContent = `Historique: ${selectedRCMZone}`;
         sortedWeeks.forEach(w => {
           html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
            <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
 
-          // Sort sectors alphabetically
           weeks[w].sort((a, b) => a.sector.localeCompare(b.sector)).forEach(entry => {
             const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
             const isMissing = (entry.hadRcm === 'Non Reporté');
             const attStr = isYes ? (entry.attendance ? ` <span style="color:#888; font-size:11px;">(${entry.attendance})</span>` : '') : '';
 
-            let statusColor = '#d9534f'; // Default Non (Red)
-            let statusText = 'Non';
+            let statusColor = '#d9534f'; let statusText = 'Non';
+            if (isYes) { statusColor = '#2a6b4a'; statusText = 'Oui'; }
+            else if (isMissing) { statusColor = '#888888'; statusText = 'Non Reporté'; }
 
-            if (isYes) {
-              statusColor = '#2a6b4a'; // Oui (Green)
-              statusText = 'Oui';
-            } else if (isMissing) {
-              statusColor = '#888888'; // Missing (Gray)
-              statusText = 'Non Reporté';
-            }
-
+            // Added inline CSS to make it look like an interactive link
             html += `<div style="font-size: 13px; font-family: sans-serif; margin-bottom: 6px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
-              <span style="color: #222; font-weight: bold;">${entry.sector}</span>
+              <span style="color: #222; font-weight: bold; cursor: pointer; border-bottom: 1px dashed #ccc;" 
+                    onclick="viewSectorHistory('${entry.sector}')" 
+                    onmouseover="this.style.color='#2a6b4a'; this.style.borderColor='#2a6b4a';" 
+                    onmouseout="this.style.color='#222'; this.style.borderColor='#ccc';">
+                ${entry.sector}
+              </span>
               <span style="color: ${statusColor}; text-align: right; font-weight: bold;">${statusText}${attStr}</span>
            </div>`;
           });
@@ -1581,10 +1622,7 @@
         });
       }
 
-      if (html === '') {
-        html = `<div style="font-size: 13px; color: #888; font-style: italic;">Aucune donnée disponible pour cette sélection.</div>`;
-      }
-
+      if (html === '') html = `<div style="font-size: 13px; color: #888; font-style: italic;">Aucune donnée disponible pour cette sélection.</div>`;
       container.innerHTML = html;
     }
 
@@ -1700,6 +1738,61 @@
       setTimeout(() => {
         if (typeof updateRCMView === 'function') updateRCMView();
       }, 50);
+    }
+
+    function viewSectorHistory(sectorName) {
+      selectedRCMSector = sectorName;
+      updateRCMView();
+    }
+
+    function clearSectorView() {
+      selectedRCMSector = null;
+      updateRCMView();
+    }
+
+    function drawSectorHistoryChart(deduplicatedResponses, activeWeeks) {
+      const sectorContainer = document.getElementById('rcm_sector_history_container');
+      sectorContainer.innerHTML = `<div style="text-align: center; font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Historique : ${selectedRCMSector}</div>
+      <div id="rcm_sector_bar" style="width: 100%; height: 350px;"></div>`;
+
+      // Map out the sector's history
+      const sectorData = Object.values(deduplicatedResponses).filter(entry => entry.sector === selectedRCMSector);
+      const weekMap = {};
+      sectorData.forEach(e => weekMap[e.weekStr] = e);
+
+      const chartData = [['Semaine', 'Statut', { role: 'style' }, { role: 'annotation' }]];
+      const hideMissing = document.getElementById('hide-missing-toggle')?.checked;
+
+      Array.from(activeWeeks).sort().forEach(w => {
+        const entry = weekMap[w];
+        let val = 0; let color = '#888888'; let annot = 'Non Reporté';
+
+        if (entry) {
+          const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
+          const isMissing = (entry.hadRcm === 'Non Reporté');
+          if (isYes) { val = 2; color = '#2a6b4a'; annot = 'Oui'; }
+          else if (!isMissing) { val = 1; color = '#d9534f'; annot = 'Non'; }
+        } else if (hideMissing) {
+          return; // Skip drawing this column if the toggle is checked
+        }
+
+        chartData.push([w, val, `color: ${color}`, annot]);
+      });
+
+      const dataTable = google.visualization.arrayToDataTable(chartData);
+
+      const options = {
+        title: '', legend: { position: 'none' }, bar: { groupWidth: '50%' },
+        chartArea: { width: '85%', height: '75%' },
+        hAxis: { title: 'Semaine' },
+        vAxis: {
+          title: 'Statut', minValue: 0, maxValue: 2.5,
+          ticks: [{ v: 0, f: 'Non Reporté' }, { v: 1, f: 'Non' }, { v: 2, f: 'Oui' }]
+        }
+      };
+
+      const chart = new google.visualization.ColumnChart(document.getElementById('rcm_sector_bar'));
+      chart.draw(dataTable, options);
     }
 
     // Start the process when the page loads
