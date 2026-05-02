@@ -582,35 +582,42 @@
     /* ── RCM IFRAME CONTAINER ── */
     .rcm-charts {
       display: grid;
-      grid-template-columns: 1fr; /* Mobile: 1 column */
+      grid-template-columns: 1fr;
+      /* Mobile: 1 column */
       gap: 30px;
       width: 100%;
-      max-width: 1200px; /* Prevents them from getting absurdly wide on huge monitors */
-      margin: 20px auto 40px auto; /* Centers the whole block */
+      max-width: 1200px;
+      /* Prevents them from getting absurdly wide on huge monitors */
+      margin: 20px auto 40px auto;
+      /* Centers the whole block */
       overflow: hidden;
     }
-    
+
     .rcm-charts iframe {
       width: 100%;
-      height: 400px; /* Fixed height usually works best for Google Charts */
+      height: 400px;
+      /* Fixed height usually works best for Google Charts */
       border: none;
       border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      background: #fff; /* Ensures the background behind the chart is crisp white */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      background: #fff;
+      /* Ensures the background behind the chart is crisp white */
       overflow: hidden;
     }
 
     /* Desktop Layout (Screens wider than 900px) */
     @media (min-width: 900px) {
       .rcm-charts {
-        grid-template-columns: 1fr 1fr; /* Creates exactly 2 equal columns */
+        grid-template-columns: 1fr 1fr;
+        /* Creates exactly 2 equal columns */
       }
     }
 
     /* ── RCM 3-COLUMN LAYOUT ── */
     .rcm-layout {
       display: grid;
-      grid-template-columns: 220px 1fr 300px; /* Left menu, Center charts, Right details */
+      grid-template-columns: 220px 1fr 300px;
+      /* Left menu, Center charts, Right details */
       gap: 20px;
       max-width: 1500px;
       margin: 0 auto 40px auto;
@@ -621,18 +628,18 @@
     .rcm-side-card {
       background: #fff;
       border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 18px;
       max-height: 800px;
       overflow-y: auto;
     }
 
     .rcm-side-card h3 {
-      margin-bottom: 15px; 
-      font-family: Georgia, serif; 
-      font-size: 16px; 
+      margin-bottom: 15px;
+      font-family: Georgia, serif;
+      font-size: 16px;
       color: #1a1a1a;
-      border-bottom: 1px solid #eee; 
+      border-bottom: 1px solid #eee;
       padding-bottom: 8px;
     }
 
@@ -643,10 +650,10 @@
     }
 
     .zone-radio-label {
-      display: flex; 
-      gap: 8px; 
-      cursor: pointer; 
-      font-family: sans-serif; 
+      display: flex;
+      gap: 8px;
+      cursor: pointer;
+      font-family: sans-serif;
       font-size: 14px;
       color: #333;
       align-items: center;
@@ -673,19 +680,25 @@
       width: 44px;
       height: 24px;
     }
+
     .toggle-switch input {
       opacity: 0;
       width: 0;
       height: 0;
     }
+
     .toggle-slider {
       position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background-color: #ccc;
       transition: .4s;
       border-radius: 24px;
     }
+
     .toggle-slider:before {
       position: absolute;
       content: "";
@@ -697,18 +710,23 @@
       transition: .4s;
       border-radius: 50%;
     }
-    .toggle-switch input:checked + .toggle-slider {
-      background-color: #2a6b4a; /* Mission Green */
+
+    .toggle-switch input:checked+.toggle-slider {
+      background-color: #2a6b4a;
+      /* Mission Green */
     }
-    .toggle-switch input:checked + .toggle-slider:before {
+
+    .toggle-switch input:checked+.toggle-slider:before {
       transform: translateX(20px);
     }
 
     /* Basic Mode Layout (Side panels hidden, charts expanded) */
     .rcm-layout.basic-mode {
       grid-template-columns: 1fr;
-      max-width: 1000px; /* Keeps the charts from stretching too absurdly wide on big screens */
+      max-width: 1000px;
+      /* Keeps the charts from stretching too absurdly wide on big screens */
     }
+
     .rcm-layout.basic-mode .rcm-side-card {
       display: none;
     }
@@ -757,7 +775,8 @@
       </div>
       <div class="edit-actions">
         <button type="button" class="btn-download" onclick="downloadJSON()">📥 Télécharger les données</button>
-        <button type="button" class="btn-download" onclick="document.getElementById('file-upload').click()">📤 Importer les données</button>
+        <button type="button" class="btn-download" onclick="document.getElementById('file-upload').click()">📤 Importer
+          les données</button>
         <input type="file" id="file-upload" accept=".json" style="display: none;" onchange="uploadJSON(event)">
         <div style="flex: 1;"></div>
         <button class="btn-cancel" onclick="closeEdit()">Annuler</button>
@@ -869,14 +888,18 @@
 
     <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 25px;">
       <label for="start-date" style="font-family: sans-serif;">Du:</label>
-      <input type="date" id="start-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
-      
-      <label for="end-date" style="font-family: sans-serif; margin-left: 15px;">Au:</label>
-      <input type="date" id="end-date" style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
-      
-      <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 15px; padding: 6px 12px;">Mettre à jour</button>
+      <input type="date" id="start-date"
+        style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
 
-      <div style="display: flex; align-items: center; margin-left: 30px; gap: 8px; border-left: 2px solid #ddd; padding-left: 30px;">
+      <label for="end-date" style="font-family: sans-serif; margin-left: 15px;">Au:</label>
+      <input type="date" id="end-date"
+        style="padding: 5px; border-radius: 5px; border: 1px solid #ddd; margin-left: 5px;">
+
+      <button onclick="fetchAndDrawCharts()" class="top-btn" style="margin-left: 15px; padding: 6px 12px;">Mettre à
+        jour</button>
+
+      <div
+        style="display: flex; align-items: center; margin-left: 30px; gap: 8px; border-left: 2px solid #ddd; padding-left: 30px;">
         <span style="font-family: sans-serif; font-size: 14px; font-weight: bold; color: #2a6b4a;">Analyser</span>
         <label class="toggle-switch">
           <input type="checkbox" id="analyze-toggle" onchange="toggleAnalysisMode()">
@@ -884,9 +907,9 @@
         </label>
       </div>
     </div>
-    
+
     <div class="rcm-layout basic-mode">
-      
+
       <div class="rcm-side-card" id="rcm-left-panel">
         <h3>Filtre par Zone</h3>
         <div class="zone-radio-list" id="zone-filter-container">
@@ -896,17 +919,21 @@
 
       <div class="rcm-charts-center" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Statut des RCM</div>
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">
+            Statut des RCM</div>
           <div id="rcm_status_pie" style="width: 100%; height: 300px;"></div>
         </div>
-        
+
         <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">Participation aux RCM</div>
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">
+            Participation aux RCM</div>
           <div id="rcm_attendance_pie" style="width: 100%; height: 300px;"></div>
         </div>
-        
-        <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
-          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM par Zone et Secteurs Rapportants</div>
+
+        <div
+          style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;">
+          <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a;">RCM
+            par Zone et Secteurs Rapportants</div>
           <div id="rcm_zone_bar" style="width: 100%; height: 350px;"></div>
         </div>
       </div>
@@ -914,7 +941,8 @@
       <div class="rcm-side-card" id="rcm-right-panel">
         <h3 id="right-panel-title">Détails</h3>
         <div id="right-panel-content">
-          <div style="font-size: 12px; color: #888; font-style: italic;">Sélectionnez une plage de dates pour voir les détails.</div>
+          <div style="font-size: 12px; color: #888; font-style: italic;">Sélectionnez une plage de dates pour voir les
+            détails.</div>
         </div>
       </div>
 
@@ -927,9 +955,9 @@
     let selectedRCMZone = 'Mission'; // Keeps track of the currently selected radio button
     let data = {}; // We start empty, the server will fill this!
     let friendsAttendanceData = { current: 0, lastWeek: 0, average: 0 }; // Friends attendance from Google Sheet
-    
+
     // Google Sheets configuration (used for RCM data and friends attendance)
-    const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo'; 
+    const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo';
     const SHEET_NAME = 'Form Responses'; // Verify your tab name
     async function loadData() {
       const response = await fetch('/api/data');
@@ -945,10 +973,10 @@
       const daysSinceSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
       const mostRecentSunday = new Date(today);
       mostRecentSunday.setDate(today.getDate() - daysSinceSunday);
-      
+
       const lastMonday = new Date(mostRecentSunday);
       lastMonday.setDate(mostRecentSunday.getDate() - 6);
-      
+
       const lastWeekSunday = new Date(lastMonday);
       lastWeekSunday.setDate(lastMonday.getDate() - 1);
       const lastWeekMonday = new Date(lastWeekSunday);
@@ -961,7 +989,7 @@
 
       fetchFriendsForWeek(startDate, endDate, 'current');
       fetchFriendsForWeek(lastWeekStart, lastWeekEnd, 'lastWeek');
-      
+
       // NEW: Fetch the manual average number from cell H1
       fetchFriendsAverage();
     }
@@ -970,10 +998,10 @@
       // Query just Column H, and limit to 1 row (Row 1)
       const queryString = `SELECT H LIMIT 1`;
       const encodedQuery = encodeURIComponent(queryString);
-      
+
       // We append &headers=0 so Google doesn't accidentally treat H1 as a text header
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}&headers=0`;
-      
+
       const query = new google.visualization.Query(url);
       query.send((response) => {
         if (!response.isError()) {
@@ -1000,12 +1028,12 @@
       const queryString = `SELECT F WHERE toDate(A) >= date '${startDate}' AND toDate(A) <= date '${endDate}'`;
       const encodedQuery = encodeURIComponent(queryString);
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=${encodedQuery}`;
-      
+
       const query = new google.visualization.Query(url);
       query.send((response) => {
         if (!response.isError()) {
           let total = 0;
-          const tableData = response.getDataTable(); 
+          const tableData = response.getDataTable();
           for (let i = 0; i < tableData.getNumberOfRows(); i++) {
             const friends = parseInt(tableData.getValue(i, 0));
             if (!isNaN(friends) && friends > 0) {
@@ -1014,7 +1042,7 @@
           }
           // Save the total to our global object
           friendsAttendanceData[weekKey] = total;
-          
+
           // TRIGGER: Redraw the funnel now that we have the Google Sheets data!
           if (data && data.stages) {
             buildFunnel();
@@ -1026,7 +1054,7 @@
     function renderAll() {
       // 1. Update Yearly Baptisms
       document.getElementById('disp-bap-year').textContent = data.baptismsYear;
-      
+
       // 2. Update the Names list
       const namesEl = document.getElementById('names');
       namesEl.innerHTML = '';
@@ -1036,22 +1064,22 @@
       function renderMetric(prefix, obj) {
         // Calculate the maximum value to scale the bars correctly
         const max = Math.max(obj.tw, obj.lw, obj.avg) || 1;
-        
+
         // Update the numbers
         document.getElementById(`disp-${prefix}-tw`).textContent = obj.tw.toLocaleString();
         document.getElementById(`disp-${prefix}-lw`).textContent = obj.lw.toLocaleString();
         document.getElementById(`disp-${prefix}-avg`).textContent = obj.avg.toLocaleString();
-        
+
         // Update the visual width of the bars
         document.getElementById(`bar-${prefix}-tw`).style.width = (obj.tw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-lw`).style.width = (obj.lw / max * 100) + '%';
         document.getElementById(`bar-${prefix}-avg`).style.width = (obj.avg / max * 100) + '%';
       }
-      
+
       // 4. Render the two bottom side-cards (Leçons and Nouveaux Membres)
       renderMetric('lessons', data.lessons);
       renderMetric('members', data.members);
-      
+
       // 5. Draw the Funnel (which now automatically handles injecting the nested friends data)
       buildFunnel();
     }
@@ -1059,7 +1087,7 @@
     function buildFunnel() {
       const funnel = document.getElementById('funnel');
       if (!funnel) return;
-      
+
       const availW = funnel.offsetWidth || 400;
       const allVals = data.stages.flatMap(s => [s.tw, s.lw, s.avg]);
       const globalMax = Math.max(...allVals);
@@ -1067,12 +1095,12 @@
       // ADDED: a 'forceOutside' parameter at the end
       function barHTML(cls, w, color, opacity, labelTxt, val, numCls, nestedFriendsCount = 0, forceOutside = false) {
         const barStyle = `width:${Math.max(w, 4)}px;background:${color};${opacity ? 'opacity:' + opacity : ''};position:relative;overflow:hidden;display:flex;align-items:center;`;
-        
+
         let nestedHtml = '';
         if (nestedFriendsCount > 0) {
           const parentVal = parseInt(val.toString().replace(/,/g, '')) || 1;
           const percent = Math.min((nestedFriendsCount / parentVal) * 100, 100);
-          
+
           // The inner nested bar (Dark Blue). Font size increased to 14px for readability
           nestedHtml = `<div title="Nouveaux Amis à l'Eglise" style="position:absolute; height:100%; width:${percent}%; background:#3A7FCC; top:0; left:0; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; box-sizing:border-box; z-index:2; border-radius:inherit;">
             <span style="color:white; font-size:14px; font-weight:bold; font-family:sans-serif;">${nestedFriendsCount}</span>
@@ -1107,7 +1135,7 @@
         let nestedAvg = 0; // <-- Added this variable
         let legendHtml = '';
         let isAmisEglise = false;
-        
+
         // Check if the current stage is "Amis à l'église"
         const stageName = s.label.toLowerCase();
         if (stageName.includes("église") || stageName.includes("eglise")) {
@@ -1115,7 +1143,7 @@
           nestedTw = friendsAttendanceData.current || 0;
           nestedLw = friendsAttendanceData.lastWeek || 0;
           nestedAvg = friendsAttendanceData.average || 0; // <-- Assign the new average!
-          
+
           legendHtml = `<div style="text-align: center; font-size: 14px; font-weight: bold; color: #3A7FCC; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <div style="width: 12px; height: 12px; background: #3A7FCC; border-radius: 2px;"></div>
             Nouveaux Amis à l'Eglise
@@ -1210,15 +1238,15 @@
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-  
+
       const link = document.createElement("a");
       link.href = url;
       const today = new Date().toISOString().split('T')[0];
       link.download = "data-" + today + ".json"; // Name of the downloaded file with date
-  
+
       document.body.appendChild(link);
       link.click();
-  
+
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
@@ -1255,46 +1283,46 @@
     }
 
     // ── RCM DASHBOARD INITIALIZATION ──
-    google.charts.load('current', {'packages':['corechart', 'bar']});
+    google.charts.load('current', { 'packages': ['corechart', 'bar'] });
     // We wait for Google Charts to load, then initialize defaults and draw.
     google.charts.setOnLoadCallback(initializeRCMDashboard);
 
     function initializeRCMDashboard() {
-    // 1. Set the dates in the input boxes immediately
-    setDefaultDates();
+      // 1. Set the dates in the input boxes immediately
+      setDefaultDates();
 
-    // 2. Set up a watcher to wait until the RCM tab actually becomes visible
-    const rcmView = document.getElementById('view-rcm');
-    
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          // The tab is now visible! It has real dimensions. Draw the charts!
-          fetchAndDrawCharts();
-          
-          // Disconnect the observer so we don't re-fetch data every single time 
-          // the user switches back and forth between tabs
-          observer.disconnect(); 
-        }
+      // 2. Set up a watcher to wait until the RCM tab actually becomes visible
+      const rcmView = document.getElementById('view-rcm');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // The tab is now visible! It has real dimensions. Draw the charts!
+            fetchAndDrawCharts();
+
+            // Disconnect the observer so we don't re-fetch data every single time 
+            // the user switches back and forth between tabs
+            observer.disconnect();
+          }
+        });
       });
-    });
 
-    // Start watching the RCM page container
-    if (rcmView) {
-      observer.observe(rcmView);
+      // Start watching the RCM page container
+      if (rcmView) {
+        observer.observe(rcmView);
+      }
     }
-  }
 
     // Calculates Last Monday and Most Recent Sunday
     function setDefaultDates() {
       const today = new Date();
       const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, etc.
-      
+
       // Calculate days to subtract to get to the most recent Sunday
       const daysSinceSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
       const mostRecentSunday = new Date(today);
       mostRecentSunday.setDate(today.getDate() - daysSinceSunday);
-      
+
       // Last Monday is 6 days before the most recent Sunday
       const lastMonday = new Date(mostRecentSunday);
       lastMonday.setDate(mostRecentSunday.getDate() - 6);
@@ -1326,16 +1354,16 @@
       }
 
       const rawData = response.getDataTable();
-      
+
       // Reset global storage
       rawRCMDataList = [];
       let zonesSet = new Set();
 
       // 1. EXTRACT ALL RAW DATA AND ZONES
       for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        const dateVal = rawData.getValue(i, 0); 
+        const dateVal = rawData.getValue(i, 0);
         if (!dateVal) continue;
-        
+
         const zone = rawData.getValue(i, 1);
         const sector = rawData.getValue(i, 2);
         const hadRcm = rawData.getValue(i, 3);
@@ -1363,7 +1391,7 @@
 
     function buildZoneMenu() {
       const container = document.getElementById('zone-filter-container');
-      
+
       // Ensure 'Mission' remains selected if a previously selected zone isn't in the new date range
       if (selectedRCMZone !== 'Mission' && !rcmZonesList.includes(selectedRCMZone)) {
         selectedRCMZone = 'Mission';
@@ -1392,38 +1420,64 @@
     // Filters the data, deduplicates it, and draws the charts/panels
     function updateRCMView() {
       const deduplicatedResponses = {};
-      const statusCounts = { 'Oui': 0, 'Non': 0 };
+      const statusCounts = { 'Oui': 0, 'Non': 0, 'Non Reporté': 0 };
       const attendanceCounts = { '1 membre': 0, '2 membres': 0, '3+ membres': 0 };
-      const zoneMetrics = {}; 
-      const activeWeeks = new Set(); // Tracks how many weeks we are looking at
+      const zoneMetrics = {};
+      const activeWeeks = new Set();
+      const knownSectors = {}; // Maps sector -> zone to keep track of known sectors
 
-      // 1. FILTER AND DEDUPLICATE
+      // 1. GATHER ALL KNOWN WEEKS AND SECTORS
       rawRCMDataList.forEach(entry => {
+        activeWeeks.add(entry.weekStr); // Track all active weeks in the range
+
         if (selectedRCMZone !== 'Mission' && entry.zone !== selectedRCMZone) return;
+
+        knownSectors[entry.sector] = entry.zone; // Record that this sector exists
         const uniqueKey = `${entry.weekStr}_${entry.sector}`;
         deduplicatedResponses[uniqueKey] = entry;
       });
 
+      // 1.5. FILL IN MISSING REPORTS
+      activeWeeks.forEach(w => {
+        Object.keys(knownSectors).forEach(sector => {
+          const zone = knownSectors[sector];
+          const uniqueKey = `${w}_${sector}`;
+
+          // If no report exists for this week + sector combo, synthesize one!
+          if (!deduplicatedResponses[uniqueKey]) {
+            deduplicatedResponses[uniqueKey] = {
+              weekStr: w,
+              zone: zone,
+              sector: sector,
+              hadRcm: 'Non Reporté',
+              attendance: ''
+            };
+          }
+        });
+      });
+
       // 2. AGGREGATE FOR CHARTS
       Object.values(deduplicatedResponses).forEach(entry => {
-        activeWeeks.add(entry.weekStr); // Record the active week
-        
         const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
-        
-        // Status Pie (Keeps total aggregate)
+        const isMissing = (entry.hadRcm === 'Non Reporté');
+
+        // Status Pie Update
         if (isYes) statusCounts['Oui']++;
+        else if (isMissing) statusCounts['Non Reporté']++;
         else statusCounts['Non']++;
 
-        // Zone Bar Chart (Now counting TOTAL reports, not unique names)
+        // Zone Bar Chart Update
         if (entry.zone) {
           if (!zoneMetrics[entry.zone]) {
             zoneMetrics[entry.zone] = { rcmCount: 0, reportCount: 0 };
           }
-          zoneMetrics[entry.zone].reportCount++; // Every deduplicated report adds 1
+          if (!isMissing) {
+            zoneMetrics[entry.zone].reportCount++; // Only count ACTUAL submitted reports
+          }
           if (isYes) zoneMetrics[entry.zone].rcmCount++;
         }
 
-        // Attendance Pie (Keeps total aggregate)
+        // Attendance Pie
         if (isYes && entry.attendance) {
           const attStr = entry.attendance.toString();
           if (attStr.includes('1')) attendanceCounts['1 membre']++;
@@ -1433,21 +1487,20 @@
       });
 
       // 3. CALCULATE AVERAGES FOR MULTI-WEEK VIEWS
-      const numWeeks = activeWeeks.size || 1; // Prevent division by zero
+      const numWeeks = activeWeeks.size || 1;
       const averagedZoneMetrics = {};
-      
+
       Object.keys(zoneMetrics).forEach(zone => {
-         averagedZoneMetrics[zone] = {
-            // Divide total by weeks to get the average (e.g. 2.5 RCMs per week)
-            avgRcm: zoneMetrics[zone].rcmCount / numWeeks,
-            avgReports: zoneMetrics[zone].reportCount / numWeeks
-         };
+        averagedZoneMetrics[zone] = {
+          avgRcm: zoneMetrics[zone].rcmCount / numWeeks,
+          avgReports: zoneMetrics[zone].reportCount / numWeeks
+        };
       });
 
       // Update Charts
       drawRCMStatusPie(statusCounts);
       drawAttendancePie(attendanceCounts);
-      drawZoneBarChart(averagedZoneMetrics, numWeeks); // Passing the new data and week count!
+      drawZoneBarChart(averagedZoneMetrics, numWeeks);
 
       // Update Right Panel Details
       buildRightPanelDetails(deduplicatedResponses);
@@ -1460,8 +1513,8 @@
       // Group the deduplicated data by week
       const weeks = {};
       Object.values(deduplicatedData).forEach(entry => {
-         if (!weeks[entry.weekStr]) weeks[entry.weekStr] = [];
-         weeks[entry.weekStr].push(entry);
+        if (!weeks[entry.weekStr]) weeks[entry.weekStr] = [];
+        weeks[entry.weekStr].push(entry);
       });
 
       // Sort weeks from newest to oldest
@@ -1469,51 +1522,67 @@
       let html = '';
 
       if (selectedRCMZone === 'Mission') {
-         title.textContent = 'Totaux des Zones par Semaine';
-         sortedWeeks.forEach(w => {
-            html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
-               <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
+        title.textContent = 'Totaux des Zones par Semaine';
+        sortedWeeks.forEach(w => {
+          html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
+           <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
 
-            // Group by zone for the mission view
-            const zoneTotals = {};
-            weeks[w].forEach(entry => {
-               if (!zoneTotals[entry.zone]) zoneTotals[entry.zone] = { total: 0, rcm: 0 };
-               zoneTotals[entry.zone].total++;
-               if (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui') zoneTotals[entry.zone].rcm++;
-            });
+          // Group by zone for the mission view
+          const zoneTotals = {};
+          weeks[w].forEach(entry => {
+            if (!zoneTotals[entry.zone]) zoneTotals[entry.zone] = { total: 0, rcm: 0, missing: 0 };
 
-            Object.keys(zoneTotals).sort().forEach(z => {
-               html += `<div style="font-size: 13px; font-family: sans-serif; color: #444; margin-bottom: 6px; display: flex; justify-content: space-between;">
-                  <strong>${z}</strong>
-                  <span>${zoneTotals[z].rcm} RCM / ${zoneTotals[z].total} rapp.</span>
-               </div>`;
-            });
-            html += `</div>`;
-         });
+            if (entry.hadRcm === 'Non Reporté') {
+              zoneTotals[entry.zone].missing++;
+            } else {
+              zoneTotals[entry.zone].total++; // Count actual reports
+            }
+            if (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui') zoneTotals[entry.zone].rcm++;
+          });
+
+          Object.keys(zoneTotals).sort().forEach(z => {
+            const missingText = zoneTotals[z].missing > 0 ? ` <span style="color:#d9534f; font-weight:normal; font-size: 11px;">(${zoneTotals[z].missing} absents)</span>` : '';
+            html += `<div style="font-size: 13px; font-family: sans-serif; color: #444; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <strong>${z}</strong>
+              <span>${zoneTotals[z].rcm} RCM / ${zoneTotals[z].total} rapp.${missingText}</span>
+           </div>`;
+          });
+          html += `</div>`;
+        });
       } else {
-         title.textContent = `Historique: ${selectedRCMZone}`;
-         sortedWeeks.forEach(w => {
-            html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
-               <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
+        title.textContent = `Historique: ${selectedRCMZone}`;
+        sortedWeeks.forEach(w => {
+          html += `<div style="margin-bottom: 18px; border-bottom: 1px solid #f0ebe0; padding-bottom: 12px;">
+           <h4 style="font-size: 13px; color: #2a6b4a; margin-bottom: 8px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em;">Semaine ${w}</h4>`;
 
-            // Sort sectors alphabetically
-            weeks[w].sort((a,b) => a.sector.localeCompare(b.sector)).forEach(entry => {
-               const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
-               const attStr = isYes ? (entry.attendance ? ` <span style="color:#888; font-size:11px;">(${entry.attendance})</span>` : '') : '';
-               const statusColor = isYes ? '#2a6b4a' : '#d9534f';
-               const statusText = isYes ? 'Oui' : 'Non';
+          // Sort sectors alphabetically
+          weeks[w].sort((a, b) => a.sector.localeCompare(b.sector)).forEach(entry => {
+            const isYes = (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui');
+            const isMissing = (entry.hadRcm === 'Non Reporté');
+            const attStr = isYes ? (entry.attendance ? ` <span style="color:#888; font-size:11px;">(${entry.attendance})</span>` : '') : '';
 
-               html += `<div style="font-size: 13px; font-family: sans-serif; margin-bottom: 6px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
-                  <span style="color: #222; font-weight: bold;">${entry.sector}</span>
-                  <span style="color: ${statusColor}; text-align: right; font-weight: bold;">${statusText}${attStr}</span>
-               </div>`;
-            });
-            html += `</div>`;
-         });
+            let statusColor = '#d9534f'; // Default Non (Red)
+            let statusText = 'Non';
+
+            if (isYes) {
+              statusColor = '#2a6b4a'; // Oui (Green)
+              statusText = 'Oui';
+            } else if (isMissing) {
+              statusColor = '#888888'; // Missing (Gray)
+              statusText = 'Non Reporté';
+            }
+
+            html += `<div style="font-size: 13px; font-family: sans-serif; margin-bottom: 6px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
+              <span style="color: #222; font-weight: bold;">${entry.sector}</span>
+              <span style="color: ${statusColor}; text-align: right; font-weight: bold;">${statusText}${attStr}</span>
+           </div>`;
+          });
+          html += `</div>`;
+        });
       }
 
       if (html === '') {
-         html = `<div style="font-size: 13px; color: #888; font-style: italic;">Aucune donnée disponible pour cette sélection.</div>`;
+        html = `<div style="font-size: 13px; color: #888; font-style: italic;">Aucune donnée disponible pour cette sélection.</div>`;
       }
 
       container.innerHTML = html;
@@ -1529,18 +1598,17 @@
     }
 
     function drawRCMStatusPie(counts) {
-      // We append the exact count to the label so it shows up in the legend!
       const chartData = google.visualization.arrayToDataTable([
         ['Statut', 'Nombre de secteurs'],
         ['Oui (' + counts['Oui'] + ')', counts['Oui']],
-        ['Non (' + counts['Non'] + ')', counts['Non']]
+        ['Non (' + counts['Non'] + ')', counts['Non']],
+        ['Non Reporté (' + counts['Non Reporté'] + ')', counts['Non Reporté']] // New Slice!
       ]);
 
       const options = {
         title: '',
-        colors: ['#2a6b4a', '#d9534f'],
+        colors: ['#2a6b4a', '#d9534f', '#888888'], // Added gray color for missing
         pieHole: 0.4,
-        // pieSliceText is removed, so it automatically renders percentages inside the slices
         legend: { position: 'bottom' },
         chartArea: { width: '90%', height: '85%' }
       };
@@ -1602,7 +1670,7 @@
         colors: ['#2a6b4a', '#D4943A'],
         chartArea: { width: '85%', height: '80%' },
         hAxis: { title: 'Zone' },
-        vAxis: { title: 'Nombre', minValue: 0 } 
+        vAxis: { title: 'Nombre', minValue: 0 }
       };
 
       const chart = new google.visualization.ColumnChart(document.getElementById('rcm_zone_bar'));
@@ -1612,25 +1680,25 @@
     function toggleAnalysisMode() {
       const isAnalysisMode = document.getElementById('analyze-toggle').checked;
       const layoutElement = document.querySelector('.rcm-layout');
-      
+
       if (isAnalysisMode) {
         // Switch is ON: Reveal the 3-column analysis layout
         layoutElement.classList.remove('basic-mode');
       } else {
         // Switch is OFF: Hide side panels and go back to full-width
         layoutElement.classList.add('basic-mode');
-        
+
         // Reset to Mission view if they close the panel while looking at a specific zone
         if (selectedRCMZone !== 'Mission') {
-           selectedRCMZone = 'Mission';
-           const missionRadio = document.querySelector('input[name="zone-filter"][value="Mission"]');
-           if (missionRadio) missionRadio.checked = true;
+          selectedRCMZone = 'Mission';
+          const missionRadio = document.querySelector('input[name="zone-filter"][value="Mission"]');
+          if (missionRadio) missionRadio.checked = true;
         }
       }
-      
+
       // Wait 50ms for CSS to resize, then perfectly redraw the charts to fit the space
       setTimeout(() => {
-         if (typeof updateRCMView === 'function') updateRCMView();
+        if (typeof updateRCMView === 'function') updateRCMView();
       }, 50);
     }
 
