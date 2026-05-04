@@ -940,6 +940,21 @@
     let data = {}; // We start empty, the server will fill this!
     let friendsAttendanceData = { current: 0, lastWeek: 0, average: 0 }; // Friends attendance from Google Sheet
 
+    let MASTER_SECTOR_LIST = [];
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-QLAgJrLKKe6JePe6IBEqRRw4N6Br8hJT-_cdvmKL-c48yGrh0BPq9S999rSyjJXY/exec'; // <-- Insert the URL you copied in Step 2
+
+    // Fetch the dynamic list from your Google Sheet
+    async function fetchMasterSectors() {
+      try {
+        // We use redirect: 'follow' because GAS Web Apps redirect the raw output
+        const response = await fetch(GAS_WEB_APP_URL, { redirect: 'follow' });
+        MASTER_SECTOR_LIST = await response.json();
+        console.log("Dynamically loaded sectors:", MASTER_SECTOR_LIST);
+      } catch (error) {
+        console.error("Failed to load sectors from GAS:", error);
+      }
+    }
+
     // Google Sheets configuration (used for RCM data and friends attendance)
     const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo';
     const SHEET_NAME = 'Form Responses'; // Verify your tab name
@@ -1271,11 +1286,14 @@
     // We wait for Google Charts to load, then initialize defaults and draw.
     google.charts.setOnLoadCallback(initializeRCMDashboard);
 
-    function initializeRCMDashboard() {
+    async function initializeRCMDashboard() {
       // 1. Set the dates in the input boxes immediately
       setDefaultDates();
 
-      // 2. Set up a watcher to wait until the RCM tab actually becomes visible
+      // 2. Fetch the dynamic sector list from your Google Apps Script!
+      await fetchMasterSectors();
+
+      // 3. Set up a watcher to wait until the RCM tab actually becomes visible
       const rcmView = document.getElementById('view-rcm');
 
       const observer = new IntersectionObserver((entries) => {
@@ -1476,7 +1494,7 @@
         centerContainer.innerHTML = `<div id="rcm_sector_history_container" style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px; grid-column: 1 / -1;"></div>`;
         drawSectorHistoryChart(deduplicatedResponses, activeWeeks);
         buildRightPanelDetails(deduplicatedResponses);
-        return; 
+        return;
       }
 
       if (!isWeekByWeek) {
@@ -1498,7 +1516,7 @@
 
         const stats = calculateStats(Object.values(deduplicatedResponses));
         const numWeeks = activeWeeks.size || 1;
-        
+
         drawRCMStatusPie(stats.statusCounts, 'rcm_status_pie_combined');
         drawAttendancePie(stats.attendanceCounts, 'rcm_attendance_pie_combined');
         drawZoneBarChart(stats.zoneMetrics, numWeeks, 'rcm_zone_bar_combined');
@@ -1510,7 +1528,7 @@
         // 1. Build out the DOM elements for all the weeks first
         sortedWeeks.forEach(week => {
           const weekId = week.replace(/[^a-zA-Z0-9]/g, ''); // creates safe IDs (e.g., 2026W18)
-          
+
           centerContainer.innerHTML += `
             <div style="grid-column: 1 / -1; font-size: 18px; font-family: Georgia, serif; font-weight: bold; color: #2a6b4a; border-bottom: 2px solid #2a6b4a; padding-bottom: 5px; margin-top: 10px;">
               Semaine ${week}
