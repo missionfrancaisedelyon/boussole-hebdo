@@ -1380,21 +1380,34 @@
         selectedRCMZone = 'Mission';
       }
 
-      // Check if switch was previously checked to maintain state during re-renders
-      const wasChecked = document.getElementById('hide-missing-toggle')?.checked || false;
+      // Maintain state of both toggles during re-renders
+      const wasHideChecked = document.getElementById('hide-missing-toggle')?.checked || false;
+      const wasWeekChecked = document.getElementById('week-by-week-toggle')?.checked || false;
 
-      // Add the Toggle Switch UI
-      let html = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+      // Add both Toggle Switches (Hide Missing & Week-by-Week)
+      let html = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 12px;">
+        
         <label class="toggle-switch" style="display:flex; align-items:center; gap:8px; width:auto; cursor:pointer;">
           <div style="position:relative; width:34px; height:20px; display:inline-block;">
-            <input type="checkbox" id="hide-missing-toggle" onchange="updateRCMView()" style="opacity:0; width:0; height:0;" ${wasChecked ? 'checked' : ''}>
+            <input type="checkbox" id="hide-missing-toggle" onchange="updateRCMView()" style="opacity:0; width:0; height:0;" ${wasHideChecked ? 'checked' : ''}>
             <span class="toggle-slider" style="border-radius:20px;"></span>
           </div>
           <span style="font-size:13px; font-family:sans-serif; color:#555;">Masquer "Non Reporté"</span>
         </label>
+
+        <label class="toggle-switch" style="display:flex; align-items:center; gap:8px; width:auto; cursor:pointer;">
+          <div style="position:relative; width:34px; height:20px; display:inline-block;">
+            <input type="checkbox" id="week-by-week-toggle" onchange="updateRCMView()" style="opacity:0; width:0; height:0;" ${wasWeekChecked ? 'checked' : ''}>
+            <span class="toggle-slider" style="border-radius:20px;"></span>
+          </div>
+          <span style="font-size:13px; font-family:sans-serif; color:#555;">Détail par semaine</span>
+        </label>
+
         <style>
-          #hide-missing-toggle:checked + .toggle-slider:before { transform: translateX(14px); }
-          #hide-missing-toggle ~ .toggle-slider:before { height: 14px; width: 14px; left: 3px; bottom: 3px; }
+          #hide-missing-toggle:checked + .toggle-slider:before,
+          #week-by-week-toggle:checked + .toggle-slider:before { transform: translateX(14px); }
+          #hide-missing-toggle ~ .toggle-slider:before,
+          #week-by-week-toggle ~ .toggle-slider:before { height: 14px; width: 14px; left: 3px; bottom: 3px; }
         </style>
       </div>`;
 
@@ -1424,7 +1437,7 @@
       const activeWeeks = new Set();
       const knownSectors = {};
       const hideMissing = document.getElementById('hide-missing-toggle') ? document.getElementById('hide-missing-toggle').checked : false;
-      const isAnalysisMode = document.getElementById('analyze-toggle').checked;
+      const isWeekByWeek = document.getElementById('week-by-week-toggle') ? document.getElementById('week-by-week-toggle').checked : false;
 
       // 1. GATHER ALL KNOWN WEEKS AND SECTORS
       rawRCMDataList.forEach(entry => {
@@ -1466,7 +1479,7 @@
         return; 
       }
 
-      if (!isAnalysisMode) {
+      if (!isWeekByWeek) {
         // BASIC MODE: Combined Totals / Averages
         centerContainer.innerHTML = `
           <div style="background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 15px;">
