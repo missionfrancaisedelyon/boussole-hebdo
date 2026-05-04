@@ -1356,37 +1356,28 @@
       }
 
       const rawData = response.getDataTable();
-
-      // Reset global storage
       rawRCMDataList = [];
-      let zonesSet = new Set();
 
-      // 1. EXTRACT ALL RAW DATA AND ZONES
+      // 1. EXTRACT ALL RAW DATA
       for (let i = 0; i < rawData.getNumberOfRows(); i++) {
         const dateVal = rawData.getValue(i, 0);
         if (!dateVal) continue;
 
-        const zone = rawData.getValue(i, 1);
-        const sector = rawData.getValue(i, 2);
-        const hadRcm = rawData.getValue(i, 3);
-        const attendance = rawData.getValue(i, 4);
-        const weekStr = getISOWeek(dateVal);
-
-        if (zone) zonesSet.add(zone);
-
         rawRCMDataList.push({
           date: dateVal,
-          weekStr: weekStr,
-          zone: zone,
-          sector: sector,
-          hadRcm: hadRcm,
-          attendance: attendance
+          weekStr: getISOWeek(dateVal),
+          zone: rawData.getValue(i, 1),
+          sector: rawData.getValue(i, 2),
+          hadRcm: rawData.getValue(i, 3),
+          attendance: rawData.getValue(i, 4)
         });
       }
 
+      // 2. GET ZONES FROM MASTER LIST (Forces all zones to always appear in menu)
+      const zonesSet = new Set(MASTER_SECTOR_LIST.map(s => s.zone));
       rcmZonesList = Array.from(zonesSet).sort();
 
-      // 2. BUILD THE MENU AND RENDER THE VIEW
+      // 3. BUILD THE MENU AND RENDER THE VIEW
       buildZoneMenu();
       updateRCMView();
     }
@@ -1452,33 +1443,48 @@
     // Filters the data, deduplicates it, and draws the charts/panels
     function updateRCMView() {
       const deduplicatedResponses = {};
+      
+      // 1. GET ALL WEEKS IN DATE RANGE (Forces weeks to exist even if there are 0 reports)
       const activeWeeks = new Set();
-      const knownSectors = {};
+      const startDate = new Date(document.getElementById('start-date').value);
+      const endDate = new Date(document.getElementById('end-date').value);
+      
+      let current = new Date(startDate);
+      while (current <= endDate) {
+        activeWeeks.add(getISOWeek(current));
+        current.setDate(current.getDate() + 7);
+      }
+      activeWeeks.add(getISOWeek(endDate)); // Catch the final week edge case
+
       const hideMissing = document.getElementById('hide-missing-toggle') ? document.getElementById('hide-missing-toggle').checked : false;
       const isWeekByWeek = document.getElementById('week-by-week-toggle') ? document.getElementById('week-by-week-toggle').checked : false;
 
-      // 1. GATHER ALL KNOWN WEEKS AND SECTORS
+      // 2. GATHER REPORTED SECTORS
       rawRCMDataList.forEach(entry => {
-        activeWeeks.add(entry.weekStr);
         if (selectedRCMZone !== 'Mission' && entry.zone !== selectedRCMZone) return;
-
-        knownSectors[entry.sector] = entry.zone;
         const uniqueKey = `${entry.weekStr}_${entry.sector}`;
         deduplicatedResponses[uniqueKey] = entry;
       });
 
-      // 1.5. FILL IN MISSING REPORTS
+      // 3. FILL IN MISSING REPORTS USING MASTER LIST
       activeWeeks.forEach(w => {
-        Object.keys(knownSectors).forEach(sector => {
-          const zone = knownSectors[sector];
-          const uniqueKey = `${w}_${sector}`;
+        MASTER_SECTOR_LIST.forEach(masterEntry => {
+          if (selectedRCMZone !== 'Mission' && masterEntry.zone !== selectedRCMZone) return;
+
+          const uniqueKey = `${w}_${masterEntry.sector}`;
           if (!deduplicatedResponses[uniqueKey]) {
-            deduplicatedResponses[uniqueKey] = { weekStr: w, zone: zone, sector: sector, hadRcm: 'Non Reporté', attendance: '' };
+            deduplicatedResponses[uniqueKey] = { 
+              weekStr: w, 
+              zone: masterEntry.zone, 
+              sector: masterEntry.sector, 
+              hadRcm: 'Non Reporté', 
+              attendance: '' 
+            };
           }
         });
       });
 
-      // 1.6. FILTER OUT MISSING IF TOGGLE IS CHECKED
+      // 4. FILTER OUT MISSING IF TOGGLE IS CHECKED
       if (hideMissing) {
         Object.keys(deduplicatedResponses).forEach(key => {
           if (deduplicatedResponses[key].hadRcm === 'Non Reporté') delete deduplicatedResponses[key];
