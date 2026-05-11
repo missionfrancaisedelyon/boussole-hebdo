@@ -1418,47 +1418,56 @@
     }
 
     function handleRCMData(response) {
+      let rawData = null;
+
       if (response.isError()) {
-        console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
-        return;
+        // Google Sheets API returns an error if the query yields 0 rows.
+        // We catch this to treat it as "0 form responses", NOT a failure.
+        if (response.getMessage().toLowerCase().includes('empty') || response.getReason() === 'data_warning') {
+          rawData = null; 
+        } else {
+          console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+          return;
+        }
+      } else {
+        rawData = response.getDataTable();
       }
 
-      const rawData = response.getDataTable();
       rawRCMDataList = [];
 
-      // 1. EXTRACT ALL RAW DATA & APPLY SCRUBBING
-      for (let i = 0; i < rawData.getNumberOfRows(); i++) {
-        const dateVal = rawData.getValue(i, 0);
-        if (!dateVal) continue;
+      // 1. EXTRACT ALL RAW DATA & APPLY SCRUBBING (Only if we have data)
+      if (rawData) {
+        for (let i = 0; i < rawData.getNumberOfRows(); i++) {
+          const dateVal = rawData.getValue(i, 0);
+          if (!dateVal) continue;
 
-        const rawZone = String(rawData.getValue(i, 1)).trim();
-        const rawSector = String(rawData.getValue(i, 2)).trim();
+          const rawZone = String(rawData.getValue(i, 1)).trim();
+          const rawSector = String(rawData.getValue(i, 2)).trim();
+          
+          const mappedZone = zoneMapping[rawZone] || rawZone;
+          const cleanedSectors = cleanSectorName(rawSector);
 
-        const mappedZone = zoneMapping[rawZone] || rawZone;
-        const cleanedSectors = cleanSectorName(rawSector);
-
-        // If it's valid, map it. If an old historical response had a forbidden suffix, 
-        // we keep it as-is so the historical data isn't entirely lost.
-        if (cleanedSectors.length > 0) {
-          cleanedSectors.forEach(sec => {
-            rawRCMDataList.push({
-              date: dateVal,
-              weekStr: getISOWeek(dateVal),
-              zone: mappedZone,
-              sector: sec,
-              hadRcm: rawData.getValue(i, 3),
-              attendance: rawData.getValue(i, 4)
-            });
-          });
-        } else {
-          rawRCMDataList.push({
-            date: dateVal,
-            weekStr: getISOWeek(dateVal),
-            zone: mappedZone,
-            sector: rawSector,
-            hadRcm: rawData.getValue(i, 3),
-            attendance: rawData.getValue(i, 4)
-          });
+          if (cleanedSectors.length > 0) {
+              cleanedSectors.forEach(sec => {
+                  rawRCMDataList.push({
+                    date: dateVal,
+                    weekStr: getISOWeek(dateVal),
+                    zone: mappedZone,
+                    sector: sec,
+                    hadRcm: rawData.getValue(i, 3),
+                    attendance: rawData.getValue(i, 4)
+                  });
+              });
+          } else {
+              rawRCMDataList.push({
+                    date: dateVal,
+                    weekStr: getISOWeek(dateVal),
+                    zone: mappedZone,
+                    sector: rawSector, 
+                    hadRcm: rawData.getValue(i, 3),
+                    attendance: rawData.getValue(i, 4)
+              });
+          }
         }
       }
 
@@ -1702,8 +1711,11 @@
           const zoneTotals = {};
           weeks[w].forEach(entry => {
             if (!zoneTotals[entry.zone]) zoneTotals[entry.zone] = { total: 0, rcm: 0, missing: 0 };
+            
+            // Increment total for EVERY sector
+            zoneTotals[entry.zone].total++;
+            
             if (entry.hadRcm === 'Non Reporté') zoneTotals[entry.zone].missing++;
-            else zoneTotals[entry.zone].total++;
             if (entry.hadRcm === 'Yes' || entry.hadRcm === 'Oui') zoneTotals[entry.zone].rcm++;
           });
 
@@ -1711,7 +1723,7 @@
             const missingText = zoneTotals[z].missing > 0 ? ` <span style="color:#d9534f; font-weight:normal; font-size: 11px;">(${zoneTotals[z].missing} absents)</span>` : '';
             html += `<div style="font-size: 13px; font-family: sans-serif; color: #444; margin-bottom: 6px; display: flex; justify-content: space-between;">
               <strong>${z}</strong>
-              <span>${zoneTotals[z].rcm} RCM / ${zoneTotals[z].total} rapp.${missingText}</span>
+              <span>${zoneTotals[z].rcm} RCM / ${zoneTotals[z].total} secteurs${missingText}</span>
            </div>`;
           });
           html += `</div>`;
@@ -1799,14 +1811,14 @@
         .sort()
         .map(zone => [
           zone,
-          zoneMetrics[zone].rcmCount / numWeeks, // Calculate the average here
-          zoneMetrics[zone].reportCount / numWeeks // Calculate the average here
+          zoneMetrics[zone].rcmCount / numWeeks, 
+          zoneMetrics[zone].totalCount / numWeeks // We now pass the total count here
         ]);
 
       if (zoneArray.length === 0) zoneArray.push(['Aucune donnée', 0, 0]);
 
       const labelRCM = numWeeks > 1 ? 'RCM (Moy. /sem)' : 'Réunions RCM';
-      const labelReports = numWeeks > 1 ? 'Rapports (Moy. /sem)' : 'Secteurs Rapportants';
+      const labelReports = numWeeks > 1 ? 'Secteurs (Moy. /sem)' : 'Secteurs Totaux';
 
       const chartData = google.visualization.arrayToDataTable([
         ['Zone', labelRCM, labelReports],
@@ -1917,8 +1929,11 @@
         else statusCounts['Non']++;
 
         if (entry.zone) {
-          if (!zoneMetrics[entry.zone]) zoneMetrics[entry.zone] = { rcmCount: 0, reportCount: 0 };
-          if (!isMissing) zoneMetrics[entry.zone].reportCount++;
+          if (!zoneMetrics[entry.zone]) zoneMetrics[entry.zone] = { rcmCount: 0, totalCount: 0 };
+          
+          // Count EVERY sector for the total metric, whether they reported or not
+          zoneMetrics[entry.zone].totalCount++;
+          
           if (isYes) zoneMetrics[entry.zone].rcmCount++;
         }
 
