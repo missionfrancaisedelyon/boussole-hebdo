@@ -941,41 +941,10 @@
     let friendsAttendanceData = { current: 0, lastWeek: 0, average: 0 }; // Friends attendance from Google Sheet
 
     let MASTER_SECTOR_LIST = [];
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-QLAgJrLKKe6JePe6IBEqRRw4N6Br8hJT-_cdvmKL-c48yGrh0BPq9S999rSyjJXY/exec'; // <-- Insert the URL you copied in Step 2
-
-    // Fetch the dynamic list from your Google Sheet and scrub it
-    async function fetchMasterSectors() {
-      try {
-        const response = await fetch(GAS_WEB_APP_URL, { redirect: 'follow' });
-        const rawList = await response.json();
-
-        let processedSets = {};
-
-        rawList.forEach(item => {
-          // Check for variations in capitalization from your GAS response
-          let zone = item.zone || item.Zone || item.zones || item.Zones || '';
-          let area = item.sector || item.Area || item.area || '';
-
-          if (!zone || !area) return;
-
-          let mappedZone = zoneMapping[zone.trim()] || zone.trim();
-          let cleanedSectors = cleanSectorName(area);
-
-          // Add scrubbed sectors to the set to prevent duplicates
-          cleanedSectors.forEach(sec => {
-            let key = `${mappedZone}_${sec}`;
-            processedSets[key] = { zone: mappedZone, sector: sec };
-          });
-        });
-
-        MASTER_SECTOR_LIST = Object.values(processedSets);
-        console.log("Dynamically loaded and filtered sectors:", MASTER_SECTOR_LIST);
-      } catch (error) {
-        console.error("Failed to load sectors from GAS:", error);
-      }
-    }
-
     // --- NEW CONSTANTS & FUNCTIONS FOR RCM FILTERING ---
+    // The Sheet holding the "Data" tab with Zones and Areas
+    const MASTER_DATA_SHEET_ID = '1FRB9YLTQ6AopmwBfLSWj9i8eQN8dLbkzvHBVTo6yQMU';
+
     const zoneMapping = {
       'Lyon Nord': 'Lyon',
       'Lyon Sud': 'Lyon',
@@ -992,7 +961,10 @@
 
     function cleanSectorName(sector) {
       if (!sector) return [];
-      if (forbiddenRegex.test(sector)) return []; // Returns empty array if forbidden
+
+      // MUST TRIM BEFORE REGEX: A trailing space makes the regex fail
+      sector = String(sector).trim();
+      if (forbiddenRegex.test(sector)) return [];
 
       // Split by slash if exists
       let parts = sector.includes('/') ? sector.split('/') : [sector];
@@ -1000,13 +972,56 @@
 
       parts.forEach(part => {
         // Remove trailing numbers and trim whitespace
-        let cleaned = part.trim().replace(/\s+\d+$/, '').trim();
+        let cleaned = String(part).trim().replace(/\s+\d+$/, '').trim();
         if (cleaned) cleanedParts.push(cleaned);
       });
 
       return cleanedParts;
     }
-    // ---------------------------------------------------
+
+    function fetchMasterSectors() {
+      return new Promise((resolve) => {
+        const encodedQuery = encodeURIComponent("SELECT A, B");
+
+        // Point specifically to MASTER_DATA_SHEET_ID
+        const url = `https://docs.google.com/spreadsheets/d/${MASTER_DATA_SHEET_ID}/gviz/tq?sheet=Data&tq=${encodedQuery}&headers=1`;
+
+        const query = new google.visualization.Query(url);
+        query.send((response) => {
+          if (response.isError()) {
+            console.error("Error fetching Data tab:", response.getMessage(), response.getDetailedMessage());
+            resolve();
+            return;
+          }
+
+          const dataTable = response.getDataTable();
+          let processedSets = {};
+
+          // Loop through the raw CSV data
+          for (let i = 0; i < dataTable.getNumberOfRows(); i++) {
+            let rawZone = dataTable.getValue(i, 0);
+            let rawArea = dataTable.getValue(i, 1);
+
+            if (!rawZone || !rawArea) continue;
+
+            let zone = String(rawZone).trim();
+            let area = String(rawArea).trim();
+
+            let mappedZone = zoneMapping[zone] || zone;
+            let cleanedSectors = cleanSectorName(area);
+
+            cleanedSectors.forEach(sec => {
+              let key = `${mappedZone}_${sec}`;
+              processedSets[key] = { zone: mappedZone, sector: sec };
+            });
+          }
+
+          MASTER_SECTOR_LIST = Object.values(processedSets);
+          console.log(`Dynamically loaded and filtered ${MASTER_SECTOR_LIST.length} sectors from Data tab:`, MASTER_SECTOR_LIST);
+          resolve();
+        });
+      });
+    }
 
     // Google Sheets configuration (used for RCM data and friends attendance)
     const SHEET_ID = '1mSenKIopCbwbZN6aGFnRsFrnRnLKUCf4c_e8fhU4jmo';
