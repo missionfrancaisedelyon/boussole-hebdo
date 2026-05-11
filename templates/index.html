@@ -948,26 +948,26 @@
       try {
         const response = await fetch(GAS_WEB_APP_URL, { redirect: 'follow' });
         const rawList = await response.json();
-        
+
         let processedSets = {};
-        
+
         rawList.forEach(item => {
           // Check for variations in capitalization from your GAS response
           let zone = item.zone || item.Zone || item.zones || item.Zones || '';
           let area = item.sector || item.Area || item.area || '';
-          
+
           if (!zone || !area) return;
-          
+
           let mappedZone = zoneMapping[zone.trim()] || zone.trim();
           let cleanedSectors = cleanSectorName(area);
-          
+
           // Add scrubbed sectors to the set to prevent duplicates
           cleanedSectors.forEach(sec => {
             let key = `${mappedZone}_${sec}`;
             processedSets[key] = { zone: mappedZone, sector: sec };
           });
         });
-        
+
         MASTER_SECTOR_LIST = Object.values(processedSets);
         console.log("Dynamically loaded and filtered sectors:", MASTER_SECTOR_LIST);
       } catch (error) {
@@ -993,17 +993,17 @@
     function cleanSectorName(sector) {
       if (!sector) return [];
       if (forbiddenRegex.test(sector)) return []; // Returns empty array if forbidden
-      
+
       // Split by slash if exists
       let parts = sector.includes('/') ? sector.split('/') : [sector];
       let cleanedParts = [];
-      
+
       parts.forEach(part => {
         // Remove trailing numbers and trim whitespace
         let cleaned = part.trim().replace(/\s+\d+$/, '').trim();
         if (cleaned) cleanedParts.push(cleaned);
       });
-      
+
       return cleanedParts;
     }
     // ---------------------------------------------------
@@ -1418,32 +1418,32 @@
 
         const rawZone = String(rawData.getValue(i, 1)).trim();
         const rawSector = String(rawData.getValue(i, 2)).trim();
-        
+
         const mappedZone = zoneMapping[rawZone] || rawZone;
         const cleanedSectors = cleanSectorName(rawSector);
 
         // If it's valid, map it. If an old historical response had a forbidden suffix, 
         // we keep it as-is so the historical data isn't entirely lost.
         if (cleanedSectors.length > 0) {
-            cleanedSectors.forEach(sec => {
-                rawRCMDataList.push({
-                  date: dateVal,
-                  weekStr: getISOWeek(dateVal),
-                  zone: mappedZone,
-                  sector: sec,
-                  hadRcm: rawData.getValue(i, 3),
-                  attendance: rawData.getValue(i, 4)
-                });
-            });
-        } else {
+          cleanedSectors.forEach(sec => {
             rawRCMDataList.push({
-                  date: dateVal,
-                  weekStr: getISOWeek(dateVal),
-                  zone: mappedZone,
-                  sector: rawSector, 
-                  hadRcm: rawData.getValue(i, 3),
-                  attendance: rawData.getValue(i, 4)
+              date: dateVal,
+              weekStr: getISOWeek(dateVal),
+              zone: mappedZone,
+              sector: sec,
+              hadRcm: rawData.getValue(i, 3),
+              attendance: rawData.getValue(i, 4)
             });
+          });
+        } else {
+          rawRCMDataList.push({
+            date: dateVal,
+            weekStr: getISOWeek(dateVal),
+            zone: mappedZone,
+            sector: rawSector,
+            hadRcm: rawData.getValue(i, 3),
+            attendance: rawData.getValue(i, 4)
+          });
         }
       }
 
@@ -1517,12 +1517,12 @@
     // Filters the data, deduplicates it, and draws the charts/panels
     function updateRCMView() {
       const deduplicatedResponses = {};
-      
+
       // 1. GET ALL WEEKS IN DATE RANGE (Forces weeks to exist even if there are 0 reports)
       const activeWeeks = new Set();
       const startDate = new Date(document.getElementById('start-date').value);
       const endDate = new Date(document.getElementById('end-date').value);
-      
+
       let current = new Date(startDate);
       while (current <= endDate) {
         activeWeeks.add(getISOWeek(current));
@@ -1547,12 +1547,12 @@
 
           const uniqueKey = `${w}_${masterEntry.sector}`;
           if (!deduplicatedResponses[uniqueKey]) {
-            deduplicatedResponses[uniqueKey] = { 
-              weekStr: w, 
-              zone: masterEntry.zone, 
-              sector: masterEntry.sector, 
-              hadRcm: 'Non Reporté', 
-              attendance: '' 
+            deduplicatedResponses[uniqueKey] = {
+              weekStr: w,
+              zone: masterEntry.zone,
+              sector: masterEntry.sector,
+              hadRcm: 'Non Reporté',
+              attendance: ''
             };
           }
         });
